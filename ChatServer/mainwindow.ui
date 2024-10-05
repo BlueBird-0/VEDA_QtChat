@@ -23,8 +23,20 @@
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuSetServer">
+    <property name="title">
+     <string>Menu</string>
+    </property>
+    <addaction name="actionSetServer"/>
+   </widget>
+   <addaction name="menuSetServer"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSetServer">
+   <property name="text">
+    <string>SetServer IP/Port</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
