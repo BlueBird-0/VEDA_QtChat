@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QTcpServer>
+#include <QTcpSocket>
 class QTextEdit;
 class QPushButton;
 
@@ -18,8 +19,13 @@ public:
     explicit serverManager(QWidget *parent = nullptr);
     ~serverManager();
 
+private slots:
+    void on_pushButton_clicked();
+    void clientConnect();
+
 private:
     QTcpServer *tcpServer = nullptr;
+    void Set_tcpServer();
 
 private:
     Ui::serverManager *ui;
