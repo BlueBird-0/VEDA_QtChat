@@ -19,6 +19,10 @@ TcpClient::TcpClient(QWidget *parent) :
 
 TcpClient::~TcpClient()
 {
+    /* if socket connectec, disconnect */
+    if(socket->state() == QAbstractSocket::ConnectedState) {
+        socket->disconnectFromHost();
+    }
     delete ui;
 }
 
