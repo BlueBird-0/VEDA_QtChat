@@ -15,6 +15,14 @@ serverManager::serverManager(QWidget *parent)
 
 serverManager::~serverManager()
 {
+    /*disconnect all the client connections */
+    for (QTcpSocket *clientSocket : clients.keys()) {
+        clientSocket->disconnectFromHost();
+        clientSocket->deleteLater();
+        updateClientList(); 
+    }
+    /* clear the client map*/
+    clients.clear();
     delete ui;
 }
 
