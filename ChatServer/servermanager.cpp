@@ -15,15 +15,20 @@ serverManager::serverManager(QWidget *parent)
 
 serverManager::~serverManager()
 {
+    clearAllConnections();
+    delete tcpServer;
+    delete ui;
+}
+
+void serverManager::clearAllConnections() {
     /*disconnect all the client connections */
     for (QTcpSocket *clientSocket : clients.keys()) {
         clientSocket->disconnectFromHost();
         clientSocket->deleteLater();
-        updateClientList(); 
+        updateClientList();
     }
     /* clear the client map*/
     clients.clear();
-    delete ui;
 }
 
 void serverManager::Set_tcpServer()
@@ -32,7 +37,7 @@ void serverManager::Set_tcpServer()
     tcpServer = new QTcpServer(this);
     connect(tcpServer, &QTcpServer::newConnection, this, &serverManager::clientConnect);
 
-    QHostAddress ipAddr = QHostAddress(ui->ipEdit->toPlainText());
+    QHostAddress ipAddr = QHostAddress::AnyIPv4;  // 모든 IP(v4)에서 리슨하도록 설정
     quint16 port = ui->portEdit->toPlainText().toUShort();
 
     if(!tcpServer->listen(ipAddr, port)) {
@@ -43,7 +48,7 @@ void serverManager::Set_tcpServer()
         return;
     }
 
-    qDebug() << "Server is listening on" << ipAddr.toString() << ":" << port;
+    qDebug() << "Server is listening on all interfaces at port:" << port;
 }
 
 void serverManager::clientConnect()
@@ -91,6 +96,7 @@ void serverManager::echoData()
 
 void serverManager::on_pushButton_clicked()
 {
+    clearAllConnections();
     Set_tcpServer();
 }
 

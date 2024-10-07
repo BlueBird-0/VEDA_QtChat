@@ -19,6 +19,7 @@ public:
     ~serverManager();
 
 private slots:
+    void clearAllConnections();
     void Set_tcpServer();
     void clientConnect();
     void clientDisconnect();
