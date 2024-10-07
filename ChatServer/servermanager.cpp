@@ -49,3 +49,12 @@ void serverManager::on_pushButton_clicked()
     Set_tcpServer();
 }
 
+void serverManager::echoData()
+{
+    QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
+    if (!clientSocket)
+        return;
+
+    QByteArray data = clientSocket->readAll();
+    clientSocket->write(data);
+}
