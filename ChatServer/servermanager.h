@@ -4,8 +4,7 @@
 #include <QWidget>
 #include <QTcpServer>
 #include <QTcpSocket>
-class QTextEdit;
-class QPushButton;
+#include <QMap>
 
 namespace Ui {
 class serverManager;
@@ -20,16 +19,17 @@ public:
     ~serverManager();
 
 private slots:
-    void on_pushButton_clicked();
-    void clientConnect();
-    void echoData();
-
-private:
-    QTcpServer *tcpServer = nullptr;
     void Set_tcpServer();
+    void clientConnect();
+    void clientDisconnect();
+    void echoData();
+    void on_pushButton_clicked();
+    void updateClientList();
 
 private:
     Ui::serverManager *ui;
+    QTcpServer *tcpServer;
+    QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
 };
 
 #endif // SERVERMANAGER_H
