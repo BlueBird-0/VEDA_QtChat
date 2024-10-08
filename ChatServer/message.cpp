@@ -23,6 +23,16 @@ Message::Message(QByteArray data) {
     }
 }
 
+void Message::SetSenderId(QString str){
+    memcpy(this->senderId, str.toStdString().c_str(), sizeof(this->senderId));
+}
+void Message::SetMessageType(QString str) {
+    memcpy(this->messageType, str.toStdString().c_str(), sizeof(this->messageType));
+}
+void Message::SetMessage(QString str) {
+    memcpy(this->message, str.toStdString().c_str(), sizeof(this->message));
+}
+
 
 QByteArray Message::getByteArray() {
     QByteArray data;

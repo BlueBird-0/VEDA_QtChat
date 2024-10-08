@@ -16,6 +16,7 @@ SOURCES += \
 
 HEADERS += \
     mainwindow.h \
+    message.h \
     tcpclient.h
 
 FORMS += \

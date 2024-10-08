@@ -1,6 +1,7 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 #include <QByteArray>
+class QString;
 
 class Message
 {
@@ -10,6 +11,10 @@ public:
     char message[BUFSIZ];
     Message();
     Message(QByteArray data);
+
+    void SetSenderId(QString str);
+    void SetMessageType(QString str);
+    void SetMessage(QString str);
 
     QByteArray getByteArray();
 };

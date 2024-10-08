@@ -91,9 +91,9 @@ void serverManager::echoData()
     
     //Message translate Test code
     Message msg;
-    memcpy(msg.senderId, "Inhak", sizeof(msg.senderId));
-    memcpy(msg.messageType, "Chat", sizeof(msg.messageType));
-    memcpy(msg.message, "testMessage", sizeof(msg.message));
+    msg.SetSenderId("Inhak");
+    msg.SetMessageType("Chat");
+    msg.SetMessage("Test Message");
 
     clientSocket->write(msg.getByteArray());
     
