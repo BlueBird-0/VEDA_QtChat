@@ -1,6 +1,7 @@
 #include "servermanager.h"
 #include "ui_servermanager.h"
 #include <QMessageBox>
+#include <message.h>
 
 serverManager::serverManager(QWidget *parent)
     : QWidget(parent)
@@ -36,6 +37,7 @@ void serverManager::Set_tcpServer()
     delete tcpServer;
     tcpServer = new QTcpServer(this);
     connect(tcpServer, &QTcpServer::newConnection, this, &serverManager::clientConnect);
+
 
     QHostAddress ipAddr = QHostAddress::AnyIPv4;  // 모든 IP(v4)에서 리슨하도록 설정
     quint16 port = ui->portEdit->toPlainText().toUShort();
@@ -87,8 +89,13 @@ void serverManager::echoData()
     QByteArray data = clientSocket->readAll();
     QString clientId = clients[clientSocket];
     
-    // Echo the message back to the client
-    clientSocket->write(data);
+    //Message translate Test code
+    Message msg;
+    memcpy(msg.senderId, "Inhak", sizeof(msg.senderId));
+    memcpy(msg.messageType, "Chat", sizeof(msg.messageType));
+    memcpy(msg.message, "testMessage", sizeof(msg.message));
+
+    clientSocket->write(msg.getByteArray());
     
     // Log the received message
     qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);

@@ -1,6 +1,7 @@
 #include "tcpclient.h"
 #include "ui_tcpclient.h"
 #include <QMessageBox>
+#include "message.h"
 
 TcpClient::TcpClient(QWidget *parent) :
     QWidget(parent),
@@ -51,7 +52,9 @@ void TcpClient::on_sendButton_clicked()
 void TcpClient::onReadyRead()
 {
     QByteArray data = socket->readAll();
-    ui->chatDisplay->appendPlainText("Server: " + QString::fromUtf8(data));
+    Message msg(data);
+
+    ui->chatDisplay->appendPlainText(QString::fromUtf8(msg.senderId) + " : " + QString::fromUtf8(msg.message));
 }
 
 void TcpClient::onConnected()

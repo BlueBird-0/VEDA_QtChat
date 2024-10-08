@@ -11,6 +11,7 @@ CONFIG += c++17
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
+    message.cpp \
     tcpclient.cpp
 
 HEADERS += \
