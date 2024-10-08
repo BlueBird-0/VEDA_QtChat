@@ -88,14 +88,26 @@ void serverManager::echoData()
 
     QByteArray data = clientSocket->readAll();
     QString clientId = clients[clientSocket];
+
+    Message recvMsg(data);
+    if(recvMsg.messageType == "Login"){
+        //TODO : 로그인 기능 구현
+        qDebug() << "Login Test Message";
+
+        //로그인 성공 응답
+        Message ackMsg;
+        ackMsg.SetSenderId(recvMsg.senderId);
+        ackMsg.SetMessageType("Login");
+        ackMsg.SetMessage("Success");
+    }
     
     //Message translate Test code
-    Message msg;
-    msg.SetSenderId("Inhak");
-    msg.SetMessageType("Chat");
-    msg.SetMessage("Test Message");
+    Message ackMsg;
+    ackMsg.SetSenderId("Inhak");
+    ackMsg.SetMessageType("Chat");
+    ackMsg.SetMessage("Test Message");
 
-    clientSocket->write(msg.getByteArray());
+    clientSocket->write(ackMsg.getByteArray());
     
     // Log the received message
     qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
