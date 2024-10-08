@@ -2,6 +2,7 @@
 #include "ui_tcpclient.h"
 #include <QMessageBox>
 #include "message.h"
+#include "logindialog.h"
 
 TcpClient::TcpClient(QWidget *parent) :
     QWidget(parent),
@@ -29,6 +30,12 @@ TcpClient::~TcpClient()
 
 void TcpClient::on_connectButton_clicked()
 {
+    //login
+    LoginDialog loginDialog;
+    if( loginDialog.exec() == QDialog::Accepted){
+        //TODO : 로그인 기능 구현필요
+    }
+
     if(socket->state() == QAbstractSocket::UnconnectedState) {
         QString ip = ui->serverIP->text();
         quint16 port = ui->serverPort->text().toUShort();
