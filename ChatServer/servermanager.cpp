@@ -80,6 +80,7 @@ void serverManager::clientDisconnect()
     }
 }
 
+
 void serverManager::echoData()
 {
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
@@ -90,24 +91,17 @@ void serverManager::echoData()
     QString clientId = clients[clientSocket];
 
     Message recvMsg(data);
-    if(recvMsg.messageType == "Login"){
-        //TODO : 로그인 기능 구현
-        qDebug() << "Login Test Message";
+    qDebug() <<"["<< recvMsg.senderId<<"]"<<recvMsg.messageType<<"-"<<recvMsg.message;
+    if( recvMsg.messageType == QString("Login")){
+        //TODO : DB와 비교해서 로그인 기능 구현
 
         //로그인 성공 응답
         Message ackMsg;
         ackMsg.SetSenderId(recvMsg.senderId);
-        ackMsg.SetMessageType("Login");
+        ackMsg.SetMessageType("LoginAck");
         ackMsg.SetMessage("Success");
+        clientSocket->write(ackMsg.getByteArray());
     }
-    
-    //Message translate Test code
-    Message ackMsg;
-    ackMsg.SetSenderId("Inhak");
-    ackMsg.SetMessageType("Chat");
-    ackMsg.SetMessage("Test Message");
-
-    clientSocket->write(ackMsg.getByteArray());
     
     // Log the received message
     qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);

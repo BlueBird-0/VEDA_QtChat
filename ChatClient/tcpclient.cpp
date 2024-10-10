@@ -2,7 +2,7 @@
 #include "ui_tcpclient.h"
 #include <QMessageBox>
 #include "message.h"
-#include "logindialog.h"
+#include "loginwidget.h"
 
 TcpClient::TcpClient(QWidget *parent) :
     QWidget(parent),
@@ -14,6 +14,9 @@ TcpClient::TcpClient(QWidget *parent) :
     connect(socket, &QTcpSocket::readyRead, this, &TcpClient::onReadyRead);
     connect(socket, &QTcpSocket::connected, this, &TcpClient::onConnected);
     connect(socket, &QTcpSocket::disconnected, this, &TcpClient::onDisconnected);
+
+    // sendMessage 시그널과 on_sendMessage 슬롯을 연결
+    connect(this, &TcpClient::sendMessage, this, &TcpClient::on_sendMessage);
 
     ui->serverIP->setText("127.0.0.1");
     ui->serverPort->setText("5432");
@@ -38,19 +41,28 @@ void TcpClient::on_connectButton_clicked()
         socket->disconnectFromHost();
     }
 
-
     //login
-    LoginDialog loginDialog;
-    if( loginDialog.exec() == QDialog::Accepted){
-        //TODO : 로그인 기능 구현필요
-    }
+    LoginWidget *login = new LoginWidget();
+    login->show();
+    connect(login, &LoginWidget::loginRequested, this, &TcpClient::sendMessage);
+
 }
 
 void TcpClient::on_sendButton_clicked()
 {
+    Message msg;
+    msg.SetSenderId("test");
+    msg.SetMessageType("Message");
+    msg.SetMessage(ui->messageEdit->text());
+
+    emit sendMessage(msg);  //서버에 msg 전송하는 이벤트 발생
+}
+
+void TcpClient::on_sendMessage(Message msg)
+{
     if(socket->state() == QAbstractSocket::ConnectedState) {
-        QString message = ui->messageEdit->text();
-        socket->write(message.toUtf8());
+        // socket에 Message 객체 전송
+        socket->write(msg.getByteArray());
         ui->messageEdit->clear();
     } else {
         QMessageBox::warning(this, "Warning", "Not connected to server");
@@ -63,6 +75,19 @@ void TcpClient::onReadyRead()
     Message msg(data);
 
     ui->chatDisplay->appendPlainText(QString::fromUtf8(msg.senderId) + " : " + QString::fromUtf8(msg.message));
+    if(msg.messageType == QString("LoginAck"))
+    {
+        if(msg.message == QString("Success"))
+        {
+            LoginInfo::loginSuccess = true;
+            LoginInfo::loginedId =msg.senderId;
+
+            qDebug() << "login Success";
+        } else {
+            // 로그인 실패
+            qDebug() << "login Failed";
+        }
+    }
 }
 
 void TcpClient::onConnected()
