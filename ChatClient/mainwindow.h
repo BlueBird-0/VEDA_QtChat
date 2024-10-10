@@ -2,13 +2,15 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "tcpclient.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
 }
 QT_END_NAMESPACE
+
+
+class TcpClient;
 
 class MainWindow : public QMainWindow
 {
@@ -17,10 +19,10 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void sendServer(const QByteArray &data);
+    TcpClient *tcp = nullptr;
 
 private:
-    TcpClient client;
-
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H

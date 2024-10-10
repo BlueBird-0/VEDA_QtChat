@@ -9,20 +9,20 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    logindialog.cpp \
+    loginwidget.cpp \
     main.cpp \
     mainwindow.cpp \
     message.cpp \
     tcpclient.cpp
 
 HEADERS += \
-    logindialog.h \
+    loginwidget.h \
     mainwindow.h \
     message.h \
     tcpclient.h
 
 FORMS += \
-    logindialog.ui \
+    loginwidget.ui \
     mainwindow.ui \
     tcpclient.ui
 
