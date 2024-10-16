@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include "servermanager.h"
+#include "dbmanager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,6 +23,7 @@ private slots:
     void on_actionSetServer_triggered();
 
 private:
+    DBManager dbManager;
     serverManager manager;
     Ui::MainWindow *ui;
 };
