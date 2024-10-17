@@ -5,7 +5,9 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QMap>
+using namespace std;
 class MainWindow;
+class Message;
 
 namespace Ui {
 class serverManager;
@@ -33,6 +35,9 @@ private:
     MainWindow* mainWindow;
     QTcpServer *tcpServer;
     QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
+
+    void sendMessage(QTcpSocket& clients, Message& messageList);
+    void sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList);
 };
 
 #endif // SERVERMANAGER_H

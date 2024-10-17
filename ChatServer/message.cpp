@@ -5,6 +5,12 @@
 
 Message::Message() {}
 
+Message::Message(QString id, QString messageType, QString message){
+    this->SetSenderId(id);
+    this->SetMessageType(messageType);
+    this->SetMessage(message);
+}
+
 Message::Message(QByteArray data) {
     // QByteArray를 QString로 변환하고, 구분자를 '\\'로 지정하여 분리
     QString dataString = QString::fromUtf8(data);
