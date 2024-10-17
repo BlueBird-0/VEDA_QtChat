@@ -30,6 +30,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_actionSetServer_triggered()
 {
-    manager.show();
+    serverManager.show();
 }
 

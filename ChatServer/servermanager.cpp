@@ -2,9 +2,11 @@
 #include "ui_servermanager.h"
 #include <QMessageBox>
 #include <message.h>
+#include <mainwindow.h>
 
-serverManager::serverManager(QWidget *parent)
+serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
     : QWidget(parent)
+    , mainWindow(mainWindow)
     , ui(new Ui::serverManager)
     , tcpServer(nullptr)
 {
@@ -93,13 +95,12 @@ void serverManager::echoData()
     Message recvMsg(data);
     qDebug() <<"["<< recvMsg.senderId<<"]"<<recvMsg.messageType<<"-"<<recvMsg.message;
     if( recvMsg.messageType == QString("Login")){
-        //TODO : DB와 비교해서 로그인 기능 구현
-
-        //로그인 성공 응답
         Message ackMsg;
         ackMsg.SetSenderId(recvMsg.senderId);
         ackMsg.SetMessageType("LoginAck");
-        ackMsg.SetMessage("Success");
+
+        bool loginSuccess = mainWindow->dbManager.checkLogin(recvMsg.senderId, recvMsg.message);
+        ackMsg.SetMessage(loginSuccess? "Success": "Fail");
         clientSocket->write(ackMsg.getByteArray());
     }
     

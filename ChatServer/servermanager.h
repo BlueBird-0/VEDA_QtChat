@@ -5,6 +5,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QMap>
+class MainWindow;
 
 namespace Ui {
 class serverManager;
@@ -15,7 +16,7 @@ class serverManager : public QWidget
     Q_OBJECT
 
 public:
-    explicit serverManager(QWidget *parent = nullptr);
+    explicit serverManager(QWidget *parent = nullptr, MainWindow *mainWIndow = nullptr);
     ~serverManager();
 
 private slots:
@@ -29,6 +30,7 @@ private slots:
 
 private:
     Ui::serverManager *ui;
+    MainWindow* mainWindow;
     QTcpServer *tcpServer;
     QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
 };

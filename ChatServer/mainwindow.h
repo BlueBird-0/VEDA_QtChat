@@ -16,6 +16,8 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+    DBManager dbManager;
+    serverManager serverManager;
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
@@ -23,8 +25,6 @@ private slots:
     void on_actionSetServer_triggered();
 
 private:
-    DBManager dbManager;
-    serverManager manager;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
