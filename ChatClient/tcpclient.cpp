@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include "message.h"
 #include "loginwidget.h"
+using namespace std;
 
 TcpClient::TcpClient(QWidget *parent) :
     QWidget(parent),
@@ -71,22 +72,48 @@ void TcpClient::on_sendMessage(Message msg)
 
 void TcpClient::onReadyRead()
 {
-    QByteArray data = socket->readAll();
-    Message msg(data);
+    QByteArray byteArray = socket->readAll();
+    vector<Message> messageList;
+    recvMessage(byteArray, messageList);
 
-    ui->chatDisplay->appendPlainText(QString::fromUtf8(msg.senderId) + " : " + QString::fromUtf8(msg.message));
-    if(msg.messageType == QString("LoginAck"))
-    {
-        if(msg.message == QString("Success"))
+    for(auto msg : messageList){
+        ui->chatDisplay->appendPlainText(QString::fromUtf8(msg.senderId) + " : " + QString::fromUtf8(msg.message));
+        if(msg.messageType == QString("LoginAck"))
         {
-            LoginInfo::loginSuccess = true;
-            LoginInfo::loginedId =msg.senderId;
+            if(msg.message == QString("Success"))
+            {
+                LoginInfo::loginSuccess = true;
+                LoginInfo::loginedId =msg.senderId;
 
-            qDebug() << "login Success";
-        } else {
-            // 로그인 실패
-            qDebug() << "login Failed";
+                qDebug() << "login Success";
+            } else {
+                // 로그인 실패
+                qDebug() << "login Failed";
+            }
         }
+    }
+}
+
+void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
+{
+    // QByteArray를 QString로 변환하고, 구분자를 '\\'로 지정하여 분리
+    QString dataString = QString::fromUtf8(byteArray);
+    QStringList splits = dataString.split("\\"); // '\\'를 기준으로 문자열을 분리
+    qDebug()<< "recvMsgList[" << splits.size() << "] :" << dataString;
+    Message msg;
+
+    for(int i=0; i<splits.size()-1; i+=3)
+    {
+        // 분리된 값들을 각각 senderId, messageType, message에 할당
+        strncpy(msg.senderId, splits[i+0].toUtf8().data(), sizeof(msg.senderId) - 1);
+        msg.senderId[sizeof(msg.senderId) - 1] = '\0';  // null-terminate
+
+        strncpy(msg.messageType, splits[i+1].toUtf8().data(), sizeof(msg.messageType) - 1);
+        msg.messageType[sizeof(msg.messageType) - 1] = '\0';  // null-terminate
+
+        strncpy(msg.message, splits[i+2].toUtf8().data(), sizeof(msg.message) - 1);
+        msg.message[sizeof(msg.message) - 1] = '\0';  // null-terminate
+        recvMsgList.push_back(msg);
     }
 }
 

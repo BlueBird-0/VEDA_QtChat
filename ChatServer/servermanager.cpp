@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <message.h>
 #include <mainwindow.h>
+using namespace std;
 
 serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
     : QWidget(parent)
@@ -94,19 +95,39 @@ void serverManager::echoData()
 
     Message recvMsg(data);
     qDebug() <<"["<< recvMsg.senderId<<"]"<<recvMsg.messageType<<"-"<<recvMsg.message;
-    if( recvMsg.messageType == QString("Login")){
-        Message ackMsg;
-        ackMsg.SetSenderId(recvMsg.senderId);
-        ackMsg.SetMessageType("LoginAck");
 
+    if( recvMsg.messageType == QString("Login")){
         bool loginSuccess = mainWindow->dbManager.checkLogin(recvMsg.senderId, recvMsg.message);
-        ackMsg.SetMessage(loginSuccess? "Success": "Fail");
-        clientSocket->write(ackMsg.getByteArray());
+        Message ackMsg(recvMsg.senderId, "LoginAck", loginSuccess? "Success": "Fail");
+        sendMessage(*clientSocket, ackMsg);
     }
     
     // Log the received message
     qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
 }
+
+//send message for clients.
+void serverManager::sendMessage(QTcpSocket& client, Message& message)
+{
+    vector<QTcpSocket*> clients;
+    clients.push_back(&client);
+    vector<Message*> messages;
+    messages.push_back(&message);
+    sendMessage(clients, messages);
+}
+
+void serverManager::sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList)
+{
+    QByteArray packet;
+    for(auto msg: messageList){
+        packet.append(msg->getByteArray());
+    }
+
+    for(auto client : clients){
+        client->write(packet);
+    }
+}
+
 
 void serverManager::on_pushButton_clicked()
 {

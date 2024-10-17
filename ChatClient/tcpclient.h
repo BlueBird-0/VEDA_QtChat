@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <QTcpSocket>
 #include "message.h"
+using namespace std;
+class QByteArray;
 
 namespace Ui {
 class TcpClient;
@@ -30,6 +32,7 @@ signals:
 
 private:
     Ui::TcpClient *ui;
+    void recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList);
 };
 
 #endif // TCPCLIENT_H
