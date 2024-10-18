@@ -25,6 +25,7 @@ TcpClient::TcpClient(QWidget *parent) :
     ui->serverIP->setText("127.0.0.1");
     ui->serverPort->setText("5432");
     ui->chatDisplay->setOpenExternalLinks(false);
+    ui->chatDisplay->setOpenLinks(false);
     updateUIState();
 }
 
@@ -153,20 +154,20 @@ void TcpClient::on_sendFileButton_clicked()
     jsonObj["filesize"] = fileInfo.size();
     jsonObj["mimetype"] = mimeType;
     jsonObj["room"] = currentRoom;
-    sendJson(jsonObj);
 
     // Read file content
     QByteArray fileData = file.readAll();
     file.close();
 
-    // Send file content
-    QJsonObject fileObj;
-    fileObj["action"] = "upload_file";
-    fileObj["room"] = currentRoom;
-    fileObj["data"] = QString(fileData.toBase64());
-    sendJson(fileObj);
+    // // Send file content
+    // QJsonObject fileObj;
+    // fileObj["action"] = "upload_file";
+    // fileObj["room"] = currentRoom;
+    jsonObj["data"] = QString(fileData.toBase64());
+    // sendJson(fileObj);
+    sendJson(jsonObj);
 
-    // Show own file message immediately
+    // // Show own file message immediately
     appendMessage(username, fileInfo.fileName(), true);
 }
 
@@ -177,6 +178,8 @@ void TcpClient::onReadyRead()
     QJsonObject jsonObj = jsonDoc.object();
 
     QString action = jsonObj["action"].toString();
+
+    qDebug() << action << "\n";
 
     if (action == "login_response") {
         bool success = jsonObj["success"].toBool();
@@ -202,7 +205,7 @@ void TcpClient::onReadyRead()
     } else if (action == "file_shared") {
         QString sender = jsonObj["sender"].toString();
         QString fileId = jsonObj["fileId"].toString();
-        QString fileName = jsonObj["filename"].toString();
+        QString fileName = jsonObj["fileName"].toString();
         fileLinks[fileId] = fileName;
         appendMessage(sender, fileId, true);
     } else if (action == "file_data") {
@@ -241,22 +244,22 @@ void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
     jsonObj["fileId"] = urlString;
     sendJson(jsonObj);
 
-    downloadProgress = new QProgressDialog("Downloading file...", "Cancel", 0, 100, this);
-    downloadProgress->setWindowModality(Qt::WindowModal);
-    connect(downloadProgress, &QProgressDialog::canceled, this, [this]() {
-        if (currentDownloadFile) {
-            currentDownloadFile->close();
-            currentDownloadFile->remove();
-            delete currentDownloadFile;
-            currentDownloadFile = nullptr;
-        }
-    });
+    // downloadProgress = new QProgressDialog("Downloading file...", "Cancel", 0, 100, this);
+    // downloadProgress->setWindowModality(Qt::WindowModal);
+    // connect(downloadProgress, &QProgressDialog::canceled, this, [this]() {
+    //     if (currentDownloadFile) {
+    //         currentDownloadFile->close();
+    //         currentDownloadFile->remove();
+    //         delete currentDownloadFile;
+    //         currentDownloadFile = nullptr;
+    //     }
+    // });
 }
 
 void TcpClient::processFileDownload(const QJsonObject &jsonObj)
 {
-    QString fileName = jsonObj["filename"].toString();
-    QString saveFilePath = QFileDialog::getSaveFileName(this, "Save File As", fileName);
+    QString fileName = jsonObj["fileId"].toString();
+    QString saveFilePath = QFileDialog::getSaveFileName(this, "Save File As", fileLinks.value(fileName, fileName));
 
     if (saveFilePath.isEmpty()) return;
 

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>serverManager</class>
- <widget class="QWidget" name="serverManager">
+ <class>ServerManager</class>
+ <widget class="QWidget" name="ServerManager">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>600</width>
-    <height>500</height>
+    <height>400</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Server IP:</string>
+        <string>IP Address:</string>
        </property>
       </widget>
      </item>
@@ -39,7 +39,7 @@
      <item>
       <widget class="QPushButton" name="pushButton">
        <property name="text">
-        <string>Start Server</string>
+        <string>Start/Restart Server</string>
        </property>
       </widget>
      </item>

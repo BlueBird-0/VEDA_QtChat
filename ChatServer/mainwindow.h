@@ -22,7 +22,7 @@ private slots:
     void on_actionSetServer_triggered();
 
 private:
-    serverManager manager;
+    ServerManager manager;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
