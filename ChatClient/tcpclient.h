@@ -1,3 +1,4 @@
+// tcpclient.h
 #ifndef TCPCLIENT_H
 #define TCPCLIENT_H
 
@@ -8,8 +9,8 @@ namespace Ui {
 class TcpClient;
 }
 
-class TcpClient : public QWidget {
-
+class TcpClient : public QWidget
+{
     Q_OBJECT
 
 public:
@@ -19,6 +20,9 @@ public:
 private slots:
     void on_connectButton_clicked();
     void on_sendButton_clicked();
+    void on_createRoomButton_clicked();
+    void on_joinRoomButton_clicked();
+    void on_leaveRoomButton_clicked();
     void onReadyRead();
     void onConnected();
     void onDisconnected();
@@ -26,7 +30,9 @@ private slots:
 private:
     Ui::TcpClient *ui;
     QTcpSocket *socket;
+    QString currentRoom;
+
+    void sendJson(const QJsonObject &jsonObj);
 };
 
 #endif // TCPCLIENT_H
-

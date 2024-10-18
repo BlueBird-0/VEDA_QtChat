@@ -1,3 +1,4 @@
+// servermanager.h
 #ifndef SERVERMANAGER_H
 #define SERVERMANAGER_H
 
@@ -5,6 +6,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QMap>
+#include <QSet>
 
 namespace Ui {
 class serverManager;
@@ -19,18 +21,25 @@ public:
     ~serverManager();
 
 private slots:
-    void clearAllConnections();
-    void Set_tcpServer();
     void clientConnect();
     void clientDisconnect();
-    void echoData();
+    void processMessage();
     void on_pushButton_clicked();
-    void updateClientList();
 
 private:
     Ui::serverManager *ui;
     QTcpServer *tcpServer;
-    QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
+    QMap<QTcpSocket*, QString> clients;
+    QMap<QString, QSet<QTcpSocket*>> rooms;
+
+    void clearAllConnections();
+    void Set_tcpServer();
+    void updateClientList();
+    void updateRoomList();
+    void createRoom(QTcpSocket* client, const QString& roomName);
+    void joinRoom(QTcpSocket* client, const QString& roomName);
+    void leaveRoom(QTcpSocket* client, const QString& roomName);
+    void sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender);
 };
 
 #endif // SERVERMANAGER_H

@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>556</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TCP Client</string>
+   <string>Chat Client</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -55,7 +55,43 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QLineEdit" name="messageEdit"/>
+      <widget class="QLineEdit" name="roomNameEdit">
+       <property name="placeholderText">
+        <string>Room Name</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="createRoomButton">
+       <property name="text">
+        <string>Create Room</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="joinRoomButton">
+       <property name="text">
+        <string>Join Room</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="leaveRoomButton">
+       <property name="text">
+        <string>Leave Room</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QLineEdit" name="messageEdit">
+       <property name="placeholderText">
+        <string>Type your message here</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="sendButton">
