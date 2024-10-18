@@ -19,6 +19,7 @@ public:
 
 private slots:
     void on_connectButton_clicked();
+    void on_loginButton_clicked();
     void on_sendButton_clicked();
     void on_createRoomButton_clicked();
     void on_joinRoomButton_clicked();
@@ -31,8 +32,11 @@ private:
     Ui::TcpClient *ui;
     QTcpSocket *socket;
     QString currentRoom;
+    QString username;
+    bool isLoggedIn;
 
     void sendJson(const QJsonObject &jsonObj);
+    void updateUIState();
 };
 
 #endif // TCPCLIENT_H

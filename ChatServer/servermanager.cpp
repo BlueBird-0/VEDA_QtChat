@@ -14,6 +14,9 @@ serverManager::serverManager(QWidget *parent)
     ui->ipEdit->setText("127.0.0.1");
     ui->portEdit->setText("5432");
     Set_tcpServer();
+    // Add some dummy user credentials (in a real app, you'd use a database)
+    userCredentials["user1"] = "pass1";
+    userCredentials["user2"] = "pass2";
 }
 
 serverManager::~serverManager()
@@ -93,22 +96,59 @@ void serverManager::processMessage()
     QJsonObject jsonObj = jsonDoc.object();
 
     QString action = jsonObj["action"].toString();
-    QString roomName = jsonObj["room"].toString();
-    QString message = jsonObj["message"].toString();
 
-    if (action == "create_room") {
-        createRoom(clientSocket, roomName);
+    if (action == "login") {
+        QString username = jsonObj["username"].toString();
+        QString password = jsonObj["password"].toString();
+        handleLogin(clientSocket, username, password);
+    } else if (action == "create_room") {
+        createRoom(clientSocket, jsonObj["room"].toString());
     } else if (action == "join_room") {
-        joinRoom(clientSocket, roomName);
+        joinRoom(clientSocket, jsonObj["room"].toString());
     } else if (action == "leave_room") {
-        leaveRoom(clientSocket, roomName);
+        leaveRoom(clientSocket, jsonObj["room"].toString());
     } else if (action == "send_message") {
+        QString roomName = jsonObj["room"].toString();
+        QString message = jsonObj["message"].toString();
         sendMessageToRoom(roomName, message, clientSocket);
     }
 }
 
+bool serverManager::authenticateUser(const QString& username, const QString& password)
+{
+    return userCredentials.contains(username) && userCredentials[username] == password;
+}
+
+void serverManager::handleLogin(QTcpSocket* client, const QString& username, const QString& password)
+{
+    QJsonObject response;
+    response["action"] = "login_response";
+
+    if (authenticateUser(username, password)) {
+        clients[client] = username;
+        response["success"] = true;
+        response["message"] = "Login successful";
+        ui->logTextEdit->appendPlainText(QString("User logged in: %1").arg(username));
+        updateClientList();
+    } else {
+        response["success"] = false;
+        response["message"] = "Invalid username or password";
+        ui->logTextEdit->appendPlainText(QString("Failed login attempt for username: %1").arg(username));
+    }
+
+    client->write(QJsonDocument(response).toJson());
+}
+
 void serverManager::createRoom(QTcpSocket* client, const QString& roomName)
 {
+    if (!clients.contains(client)) {
+        QJsonObject response;
+        response["action"] = "error";
+        response["message"] = "You must be logged in to create a room";
+        client->write(QJsonDocument(response).toJson());
+        return;
+    }
+
     if (!rooms.contains(roomName)) {
         rooms[roomName] = QSet<QTcpSocket*>();
         rooms[roomName].insert(client);
@@ -118,6 +158,8 @@ void serverManager::createRoom(QTcpSocket* client, const QString& roomName)
         response["action"] = "room_created";
         response["room"] = roomName;
         client->write(QJsonDocument(response).toJson());
+
+        ui->logTextEdit->appendPlainText(QString("Room created: %1").arg(roomName));
     } else {
         QJsonObject response;
         response["action"] = "error";
@@ -128,6 +170,14 @@ void serverManager::createRoom(QTcpSocket* client, const QString& roomName)
 
 void serverManager::joinRoom(QTcpSocket* client, const QString& roomName)
 {
+    if (!clients.contains(client)) {
+        QJsonObject response;
+        response["action"] = "error";
+        response["message"] = "You must be logged in to join a room";
+        client->write(QJsonDocument(response).toJson());
+        return;
+    }
+
     if (rooms.contains(roomName)) {
         rooms[roomName].insert(client);
         updateRoomList();
@@ -136,6 +186,8 @@ void serverManager::joinRoom(QTcpSocket* client, const QString& roomName)
         response["action"] = "joined_room";
         response["room"] = roomName;
         client->write(QJsonDocument(response).toJson());
+
+        ui->logTextEdit->appendPlainText(QString("User %1 joined room: %2").arg(clients[client], roomName));
     } else {
         QJsonObject response;
         response["action"] = "error";
@@ -157,6 +209,8 @@ void serverManager::leaveRoom(QTcpSocket* client, const QString& roomName)
         response["action"] = "left_room";
         response["room"] = roomName;
         client->write(QJsonDocument(response).toJson());
+
+        ui->logTextEdit->appendPlainText(QString("User %1 left room: %2").arg(clients[client], roomName));
     }
 }
 
@@ -176,6 +230,8 @@ void serverManager::sendMessageToRoom(const QString& roomName, const QString& me
                 client->write(messageData);
             }
         }
+
+        ui->logTextEdit->appendPlainText(QString("Message in %1 from %2: %3").arg(roomName, clients[sender], message));
     }
 }
 

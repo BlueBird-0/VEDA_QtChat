@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>400</height>
+    <width>600</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -46,32 +46,51 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>Connected Clients:</string>
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
+     <widget class="QWidget" name="layoutWidget">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Connected Clients:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="clientListWidget"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layoutWidget">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Active Rooms:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="roomListWidget"/>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="clientListWidget"/>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_4">
+    <widget class="QLabel" name="label_5">
      <property name="text">
-      <string>Active Rooms:</string>
+      <string>Server Log:</string>
      </property>
     </widget>
-   </item>
-   <item>
-    <widget class="QListWidget" name="roomListWidget"/>
    </item>
    <item>
     <widget class="QPlainTextEdit" name="logTextEdit">
      <property name="readOnly">
       <bool>true</bool>
-     </property>
-     <property name="placeholderText">
-      <string>Server Log</string>
      </property>
     </widget>
    </item>
