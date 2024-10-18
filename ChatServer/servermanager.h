@@ -35,7 +35,6 @@ private:
     QTcpServer *tcpServer;
     QMap<QTcpSocket*, QString> clients;
     QMap<QString, QSet<QTcpSocket*>> rooms;
-    QMap<QString, QString> userCredentials;  // username -> password
 
     void clearAllConnections();
     void Set_tcpServer();
@@ -45,12 +44,9 @@ private:
     void joinRoom(QTcpSocket* client, const QString& roomName);
     void leaveRoom(QTcpSocket* client, const QString& roomName);
     void sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender);
-    bool authenticateUser(const QString& username, const QString& password);
     void handleLogin(QTcpSocket* client, const QString& username, const QString& password);
     //QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
 
-    void sendMessage(QTcpSocket& clients, Message& messageList);
-    void sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList);
 };
 
 #endif // SERVERMANAGER_H

@@ -8,7 +8,7 @@
 #include <QString>
 
 
-bool DBManager::createConnection()
+bool DBManager::initDB()
 {
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName("data.db");
@@ -21,6 +21,8 @@ bool DBManager::createConnection()
     createUser(QString("root"), QString("1q2w3e4r!"), QString("1"));
     createUser(QString("admin"), QString("1q2w3e4r!"), QString("1"));
     createUser(QString("iam"), QString("aboy"), QString("1"));
+    createUser(QString("user1"), QString("pass1"), QString("1"));
+    createUser(QString("user2"), QString("pass2"), QString("1"));
 
     return true;
 }
@@ -75,7 +77,7 @@ QSqlTableModel* DBManager::getQueryModel()
 
 DBManager::DBManager()
 {
-    createConnection();
+    initDB();
     queryModel = new QSqlTableModel();
     queryModel->setTable("user");
     queryModel->select();

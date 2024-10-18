@@ -4,7 +4,6 @@
 #include <QMessageBox>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <message.h>
 #include <mainwindow.h>
 using namespace std;
 
@@ -19,8 +18,6 @@ serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
     ui->portEdit->setText("5432");
     Set_tcpServer();
     // Add some dummy user credentials (in a real app, you'd use a database)
-    userCredentials["user1"] = "pass1";
-    userCredentials["user2"] = "pass2";
 }
 
 serverManager::~serverManager()
@@ -118,17 +115,13 @@ void serverManager::processMessage()
     }
 }
 
-bool serverManager::authenticateUser(const QString& username, const QString& password)
-{
-    return userCredentials.contains(username) && userCredentials[username] == password;
-}
-
 void serverManager::handleLogin(QTcpSocket* client, const QString& username, const QString& password)
 {
     QJsonObject response;
     response["action"] = "login_response";
 
-    if (authenticateUser(username, password)) {
+    bool loginSuccess = mainWindow->dbManager.checkLogin(username, password);
+    if (loginSuccess) {
         clients[client] = username;
         response["success"] = true;
         response["message"] = "Login successful";
@@ -238,29 +231,6 @@ void serverManager::sendMessageToRoom(const QString& roomName, const QString& me
         ui->logTextEdit->appendPlainText(QString("Message in %1 from %2: %3").arg(roomName, clients[sender], message));
     }
 }
-
-//send message for clients.
-void serverManager::sendMessage(QTcpSocket& client, Message& message)
-{
-    vector<QTcpSocket*> clients;
-    clients.push_back(&client);
-    vector<Message*> messages;
-    messages.push_back(&message);
-    sendMessage(clients, messages);
-}
-
-void serverManager::sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList)
-{
-    QByteArray packet;
-    for(auto msg: messageList){
-        packet.append(msg->getByteArray());
-    }
-
-    for(auto client : clients){
-        client->write(packet);
-    }
-}
-
 
 void serverManager::on_pushButton_clicked()
 {

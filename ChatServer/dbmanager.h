@@ -14,7 +14,7 @@ private:
 public:
     bool checkLogin(QString id, QString pw);
     QSqlTableModel* getQueryModel();
-    static bool createConnection();
+    static bool initDB();
     DBManager();
 };
 

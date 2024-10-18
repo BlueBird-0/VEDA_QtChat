@@ -4,7 +4,6 @@
 #include <QMessageBox>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include "message.h"
 using namespace std;
 
 TcpClient::TcpClient(QWidget *parent) :
