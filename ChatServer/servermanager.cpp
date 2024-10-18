@@ -4,9 +4,13 @@
 #include <QMessageBox>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <message.h>
+#include <mainwindow.h>
+using namespace std;
 
-serverManager::serverManager(QWidget *parent)
+serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
     : QWidget(parent)
+    , mainWindow(mainWindow)
     , ui(new Ui::serverManager)
     , tcpServer(nullptr)
 {
@@ -234,6 +238,29 @@ void serverManager::sendMessageToRoom(const QString& roomName, const QString& me
         ui->logTextEdit->appendPlainText(QString("Message in %1 from %2: %3").arg(roomName, clients[sender], message));
     }
 }
+
+//send message for clients.
+void serverManager::sendMessage(QTcpSocket& client, Message& message)
+{
+    vector<QTcpSocket*> clients;
+    clients.push_back(&client);
+    vector<Message*> messages;
+    messages.push_back(&message);
+    sendMessage(clients, messages);
+}
+
+void serverManager::sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList)
+{
+    QByteArray packet;
+    for(auto msg: messageList){
+        packet.append(msg->getByteArray());
+    }
+
+    for(auto client : clients){
+        client->write(packet);
+    }
+}
+
 
 void serverManager::on_pushButton_clicked()
 {

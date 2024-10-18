@@ -9,6 +9,9 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+
+class TcpClient;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -16,6 +19,8 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void sendServer(const QByteArray &data);
+    TcpClient *tcp = nullptr;
 
 private:
     Ui::MainWindow *ui;

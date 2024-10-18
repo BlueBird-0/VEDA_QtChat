@@ -7,6 +7,9 @@
 #include <QTcpSocket>
 #include <QMap>
 #include <QSet>
+using namespace std;
+class MainWindow;
+class Message;
 
 namespace Ui {
 class serverManager;
@@ -17,7 +20,7 @@ class serverManager : public QWidget
     Q_OBJECT
 
 public:
-    explicit serverManager(QWidget *parent = nullptr);
+    explicit serverManager(QWidget *parent = nullptr, MainWindow *mainWIndow = nullptr);
     ~serverManager();
 
 private slots:
@@ -28,6 +31,7 @@ private slots:
 
 private:
     Ui::serverManager *ui;
+    MainWindow* mainWindow;
     QTcpServer *tcpServer;
     QMap<QTcpSocket*, QString> clients;
     QMap<QString, QSet<QTcpSocket*>> rooms;
@@ -43,6 +47,10 @@ private:
     void sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender);
     bool authenticateUser(const QString& username, const QString& password);
     void handleLogin(QTcpSocket* client, const QString& username, const QString& password);
+    //QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
+
+    void sendMessage(QTcpSocket& clients, Message& messageList);
+    void sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList);
 };
 
 #endif // SERVERMANAGER_H
