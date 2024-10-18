@@ -8,18 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    //
-    QSqlTableModel* queryModel = dbManager.getQueryModel();
-    queryModel->setHeaderData(0, Qt::Horizontal, QObject::tr("IDX"));
-    queryModel->setHeaderData(1, Qt::Horizontal, QObject::tr("ID"));
-    queryModel->setHeaderData(2, Qt::Horizontal, QObject::tr("PW"));
-    queryModel->setHeaderData(3, Qt::Horizontal, QObject::tr("Permission"));
-
-    QTableView *tableview = new QTableView;
-    tableview->setModel(queryModel);
-    tableview->setWindowTitle(QObject::tr("DB_user table"));
-    tableview->show( );
-
+    sManager = new serverManager();
     ui->setupUi(this);
 }
 
@@ -30,6 +19,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_actionSetServer_triggered()
 {
-    serverManager.show();
+    sManager->show();
 }
 

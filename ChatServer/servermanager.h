@@ -7,6 +7,7 @@
 #include <QTcpSocket>
 #include <QMap>
 #include <QSet>
+
 using namespace std;
 class MainWindow;
 class Message;
@@ -15,12 +16,16 @@ namespace Ui {
 class serverManager;
 }
 
+class DBManager;
+class QSqlTableModel;
+class QTableView;
+
 class serverManager : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit serverManager(QWidget *parent = nullptr, MainWindow *mainWIndow = nullptr);
+    explicit serverManager(QWidget *parent = nullptr);
     ~serverManager();
 
 private slots:
@@ -31,7 +36,16 @@ private slots:
 
 private:
     Ui::serverManager *ui;
-    MainWindow* mainWindow;
+    DBManager* dbManager;
+
+    QSqlTableModel* queryModel;
+    QTableView *tableview;
+
+    //Message Test table
+    QSqlTableModel* messageQueryModel;
+    QTableView *messageTableView;
+
+
     QTcpServer *tcpServer;
     QMap<QTcpSocket*, QString> clients;
     QMap<QString, QSet<QTcpSocket*>> rooms;

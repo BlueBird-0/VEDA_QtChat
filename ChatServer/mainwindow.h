@@ -16,13 +16,14 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    DBManager dbManager;
-    serverManager serverManager;
+    serverManager* sManager;
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
     void on_actionSetServer_triggered();
+
+    void on_actionShow_message_Table_triggered(bool checked);
 
 private:
     Ui::MainWindow *ui;

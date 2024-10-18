@@ -5,11 +5,13 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <mainwindow.h>
+#include <QSqlTableModel>
+#include <QTableView>
 using namespace std;
 
-serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
+serverManager::serverManager(QWidget *parent)
     : QWidget(parent)
-    , mainWindow(mainWindow)
+    , dbManager(new DBManager())
     , ui(new Ui::serverManager)
     , tcpServer(nullptr)
 {
@@ -17,6 +19,32 @@ serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
     ui->ipEdit->setText("127.0.0.1");
     ui->portEdit->setText("5432");
     Set_tcpServer();
+
+
+    queryModel = dbManager->getQueryModel();
+    queryModel->setHeaderData(0, Qt::Horizontal, QObject::tr("IDX"));
+    queryModel->setHeaderData(1, Qt::Horizontal, QObject::tr("ID"));
+    queryModel->setHeaderData(2, Qt::Horizontal, QObject::tr("PW"));
+    queryModel->setHeaderData(3, Qt::Horizontal, QObject::tr("Permission"));
+
+    tableview = new QTableView();
+    tableview->setModel(queryModel);
+    tableview->setWindowTitle(QObject::tr("DB_user table"));
+    tableview->show( );
+
+
+    // message Table Test
+    messageQueryModel = dbManager->getMessageQueryModel();
+    messageQueryModel->setHeaderData(0, Qt::Horizontal, QObject::tr("aa"));
+    messageQueryModel->setHeaderData(1, Qt::Horizontal, QObject::tr("bb"));
+    messageQueryModel->setHeaderData(2, Qt::Horizontal, QObject::tr("cc"));
+    messageQueryModel->setHeaderData(3, Qt::Horizontal, QObject::tr("dd"));
+
+    messageTableView = new QTableView();
+    messageTableView->setModel(messageQueryModel);
+    messageTableView->setWindowTitle(QObject::tr("DB_message table"));
+    messageTableView->show( );
+
     // Add some dummy user credentials (in a real app, you'd use a database)
 }
 
@@ -120,7 +148,7 @@ void serverManager::handleLogin(QTcpSocket* client, const QString& username, con
     QJsonObject response;
     response["action"] = "login_response";
 
-    bool loginSuccess = mainWindow->dbManager.checkLogin(username, password);
+    bool loginSuccess = dbManager->checkLogin(username, password);
     if (loginSuccess) {
         clients[client] = username;
         response["success"] = true;

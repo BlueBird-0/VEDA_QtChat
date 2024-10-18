@@ -6,6 +6,7 @@
 #include <QSqlError>
 #include <QSqlQueryModel>
 #include <QString>
+#include <QDebug>
 
 
 bool DBManager::initDB()
@@ -14,15 +15,66 @@ bool DBManager::initDB()
     db.setDatabaseName("data.db");
     if (!db.open( )) return false;
 
+    deleteTable(QString("user"));//TODO : test code.
+    deleteTable(QString("message"));//TODO : test code.
+
+    if (!isTableExists(QString("user"))){
+        QSqlQuery query;
+
+        query.exec("CREATE TABLE IF NOT EXISTS user ("
+                    "idx INTEGER PRIMARY KEY,"
+                    "id VARCHAR(20) NOT NULL,"
+                    "pw VARCHAR(20) NOT NULL,"
+                    "permission VARCHAR(20));");
+
+        createUser(QString("root"), QString("1q2w3e4r!"), QString("1"));
+        createUser(QString("admin"), QString("1q2w3e4r!"), QString("1"));
+        createUser(QString("iam"), QString("aboy"), QString("1"));
+        createUser(QString("user1"), QString("pass1"), QString("1"));
+        createUser(QString("user2"), QString("pass2"), QString("1"));
+    }
+    if(!isTableExists(QString("message"))){
+        initMessageTable();
+        addMessage(QString("0"), QString("testAdmin"), QString("hello chat."));
+        addMessage(QString("0"), QString("testAdmin"), QString("hi."));
+        addMessage(QString("0"), QString("testAdmin"), QString("WTF."));
+    }
+
+    return true;
+}
+
+bool DBManager::initMessageTable()
+{
     QSqlQuery query;
-    query.exec("CREATE TABLE IF NOT EXISTS user(idx INTEGER Primary Key, "
-                     "id VARCHAR(20) NOT NULL, pw VARCHAR(20) NOT NULL, permission VARCHAR(20));");
-    query.exec("INSERT INTO user VALUES(101, 'Yongsu', 'Kang', '1');");
-    createUser(QString("root"), QString("1q2w3e4r!"), QString("1"));
-    createUser(QString("admin"), QString("1q2w3e4r!"), QString("1"));
-    createUser(QString("iam"), QString("aboy"), QString("1"));
-    createUser(QString("user1"), QString("pass1"), QString("1"));
-    createUser(QString("user2"), QString("pass2"), QString("1"));
+    if (!query.exec("CREATE TABLE IF NOT EXISTS message ("
+                    "message_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "room VARCHAR(20),"
+                    "time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                    "sender VARCHAR(20),"
+                    "message VARCHAR(255));" )) {
+        qDebug() << "Error creating message table:" << query.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool DBManager::addMessage(const QString& room, const QString& sender, const QString& message)
+{
+    QSqlQuery query;
+
+    // Prepare the SQL statement to insert a new message
+    query.prepare("INSERT INTO message (room, sender, message) VALUES (:room, :sender, :message)");
+
+    // Bind the parameters
+    query.bindValue(":room", room);
+    query.bindValue(":sender", sender);
+    query.bindValue(":message", message);
+
+    // Execute the query and check for success
+    if (!query.exec()) {
+        qDebug() << "Error adding message:" << query.lastError().text();
+        return false;
+    }
 
     return true;
 }
@@ -36,6 +88,40 @@ bool DBManager::createUser(QString id, QString pw, QString permission)
 
     QSqlQuery query;
     return query.exec( insertQuery);
+}
+
+bool DBManager::isTableExists(const QString& tableName)
+{
+    QSqlQuery query;
+
+    // Prepare the SQL statement to check for the existence of the table
+    query.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = :tableName;");
+    query.bindValue(":tableName", tableName);
+
+    // Execute the query
+    if (!query.exec()) {
+        qDebug() << "Error checking for table existence:" << query.lastError().text();
+        return false;
+    }
+
+    // Return true if the table exists
+    return query.next(); // If a row is returned, the table exists
+}
+
+bool DBManager::deleteTable(const QString& tableName)
+{
+    QSqlQuery query;
+
+    // Construct the SQL statement directly
+    QString sql = QString("DROP TABLE IF EXISTS %1;").arg(tableName);
+
+    // Execute the query
+    if (!query.exec(sql)) {
+        qDebug() << "Error deleting table" << tableName << ":" << query.lastError().text();
+        return false;
+    }
+
+    return true;
 }
 
 QSqlRecord DBManager::searchTable(QString id)
@@ -74,6 +160,10 @@ QSqlTableModel* DBManager::getQueryModel()
 {
     return queryModel;
 }
+QSqlTableModel* DBManager::getMessageQueryModel()
+{
+    return messageQueryModel;
+}
 
 DBManager::DBManager()
 {
@@ -81,4 +171,9 @@ DBManager::DBManager()
     queryModel = new QSqlTableModel();
     queryModel->setTable("user");
     queryModel->select();
+
+    messageQueryModel = new QSqlTableModel();
+    messageQueryModel->setTable("message");
+    messageQueryModel->select();
+
 }
