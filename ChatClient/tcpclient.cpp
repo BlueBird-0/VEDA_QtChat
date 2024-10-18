@@ -20,7 +20,7 @@ TcpClient::TcpClient(QWidget *parent) :
     connect(this, &TcpClient::sendMessage, this, &TcpClient::on_sendMessage);
 
     ui->serverIP->setText("127.0.0.1");
-    ui->serverPort->setText("5432");
+    ui->serverPort->setText("54321");
 }
 
 TcpClient::~TcpClient()
@@ -52,9 +52,10 @@ void TcpClient::on_connectButton_clicked()
 void TcpClient::on_sendButton_clicked()
 {
     Message msg;
-    msg.SetSenderId("test");
-    msg.SetMessageType("Message");
+    msg.SetSenderId(LoginInfo::loginedId);
+    msg.SetMessageType(MessageType::Login);
     msg.SetMessage(ui->messageEdit->text());
+    ui->messageEdit->clear();
 
     emit sendMessage(msg);  //서버에 msg 전송하는 이벤트 발생
 }
@@ -62,9 +63,8 @@ void TcpClient::on_sendButton_clicked()
 void TcpClient::on_sendMessage(Message msg)
 {
     if(socket->state() == QAbstractSocket::ConnectedState) {
-        // socket에 Message 객체 전송
+        // server에 Message 객체 전송
         socket->write(msg.getByteArray());
-        ui->messageEdit->clear();
     } else {
         QMessageBox::warning(this, "Warning", "Not connected to server");
     }
@@ -78,7 +78,7 @@ void TcpClient::onReadyRead()
 
     for(auto msg : messageList){
         ui->chatDisplay->appendPlainText(QString::fromUtf8(msg.senderId) + " : " + QString::fromUtf8(msg.message));
-        if(msg.messageType == QString("LoginAck"))
+        if(msg.messageType == MessageType::LoginAck)
         {
             if(msg.message == QString("Success"))
             {
@@ -108,8 +108,12 @@ void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
         strncpy(msg.senderId, splits[i+0].toUtf8().data(), sizeof(msg.senderId) - 1);
         msg.senderId[sizeof(msg.senderId) - 1] = '\0';  // null-terminate
 
-        strncpy(msg.messageType, splits[i+1].toUtf8().data(), sizeof(msg.messageType) - 1);
-        msg.messageType[sizeof(msg.messageType) - 1] = '\0';  // null-terminate
+
+        //strncpy(msg.messageType, splits[i+1].toUtf8().data(), sizeof(msg.messageType) - 1);
+        //msg.messageType[sizeof(msg.messageType) - 1] = '\0';  // null-terminate
+
+        QString msgTypeStr = splits[i+1].toUtf8().data();
+        msg.messageType = (MessageType)msgTypeStr.toInt();
 
         strncpy(msg.message, splits[i+2].toUtf8().data(), sizeof(msg.message) - 1);
         msg.message[sizeof(msg.message) - 1] = '\0';  // null-terminate

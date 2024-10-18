@@ -29,7 +29,7 @@ void LoginWidget::on_btnLogin_clicked()
 {
     Message msg;
     msg.SetSenderId(ui->editID->toPlainText());
-    msg.SetMessageType("Login");
+    msg.SetMessageType(MessageType::Login);
     msg.SetMessage(ui->editPW->toPlainText());
 
     emit loginRequested(msg);

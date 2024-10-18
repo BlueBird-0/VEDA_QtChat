@@ -13,7 +13,7 @@ serverManager::serverManager(QWidget *parent, MainWindow* mainWindow)
 {
     ui->setupUi(this);
     ui->ipEdit->setText("127.0.0.1");
-    ui->portEdit->setText("5432");
+    ui->portEdit->setText("54321");
     Set_tcpServer();
 }
 
@@ -96,9 +96,9 @@ void serverManager::echoData()
     Message recvMsg(data);
     qDebug() <<"["<< recvMsg.senderId<<"]"<<recvMsg.messageType<<"-"<<recvMsg.message;
 
-    if( recvMsg.messageType == QString("Login")){
+    if( recvMsg.messageType == MessageType::Login){
         bool loginSuccess = mainWindow->dbManager.checkLogin(recvMsg.senderId, recvMsg.message);
-        Message ackMsg(recvMsg.senderId, "LoginAck", loginSuccess? "Success": "Fail");
+        Message ackMsg(recvMsg.senderId, MessageType::LoginAck, loginSuccess? "Success": "Fail");
         sendMessage(*clientSocket, ackMsg);
     }
     
