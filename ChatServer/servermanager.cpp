@@ -99,6 +99,7 @@ void serverManager::echoData()
     if( recvMsg.messageType == MessageType::Login){
         bool loginSuccess = mainWindow->dbManager.checkLogin(recvMsg.senderId, recvMsg.message);
         Message ackMsg(recvMsg.senderId, MessageType::LoginAck, loginSuccess? "Success": "Fail");
+
         sendMessage(*clientSocket, ackMsg);
     }
     

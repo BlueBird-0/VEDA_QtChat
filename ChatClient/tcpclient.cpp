@@ -108,12 +108,9 @@ void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
         strncpy(msg.senderId, splits[i+0].toUtf8().data(), sizeof(msg.senderId) - 1);
         msg.senderId[sizeof(msg.senderId) - 1] = '\0';  // null-terminate
 
-
-        //strncpy(msg.messageType, splits[i+1].toUtf8().data(), sizeof(msg.messageType) - 1);
-        //msg.messageType[sizeof(msg.messageType) - 1] = '\0';  // null-terminate
-
         QString msgTypeStr = splits[i+1].toUtf8().data();
         msg.messageType = (MessageType)msgTypeStr.toInt();
+
 
         strncpy(msg.message, splits[i+2].toUtf8().data(), sizeof(msg.message) - 1);
         msg.message[sizeof(msg.message) - 1] = '\0';  // null-terminate

@@ -21,10 +21,8 @@ Message::Message(QByteArray data) {
         strncpy(senderId, parts[0].toUtf8().data(), sizeof(senderId) - 1);
         senderId[sizeof(senderId) - 1] = '\0';  // null-terminate
 
-        //strncpy(messageType, parts[1].toUtf8().data(), sizeof(messageType));
         QString msgTypeStr = parts[1].toUtf8().data();
         messageType = (MessageType) (msgTypeStr.toInt());
-        //messageType[sizeof(messageType) - 1] = '\0';  // null-terminate
 
         strncpy(message, parts[2].toUtf8().data(), sizeof(message) - 1);
         message[sizeof(message) - 1] = '\0';  // null-terminate
