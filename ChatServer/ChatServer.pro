@@ -12,13 +12,11 @@ SOURCES += \
     dbmanager.cpp \
     main.cpp \
     mainwindow.cpp \
-    message.cpp \
     servermanager.cpp
 
 HEADERS += \
     dbmanager.h \
     mainwindow.h \
-    message.h \
     servermanager.h
 
 FORMS += \

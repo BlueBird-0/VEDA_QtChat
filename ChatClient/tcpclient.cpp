@@ -5,7 +5,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "message.h"
-#include "loginwidget.h"
 using namespace std;
 
 TcpClient::TcpClient(QWidget *parent) :
@@ -19,9 +18,6 @@ TcpClient::TcpClient(QWidget *parent) :
     connect(socket, &QTcpSocket::readyRead, this, &TcpClient::onReadyRead);
     connect(socket, &QTcpSocket::connected, this, &TcpClient::onConnected);
     connect(socket, &QTcpSocket::disconnected, this, &TcpClient::onDisconnected);
-
-    // sendMessage 시그널과 on_sendMessage 슬롯을 연결
-    //connect(this, &TcpClient::sendMessage, this, &TcpClient::on_sendMessage);
 
     ui->serverIP->setText("127.0.0.1");
     ui->serverPort->setText("5432");
@@ -65,12 +61,6 @@ void TcpClient::on_connectButton_clicked()
     } else {
         socket->disconnectFromHost();
     }
-
-    //login
-    //LoginWidget *login = new LoginWidget();
-    //login->show();
-    //connect(login, &LoginWidget::loginRequested, this, &TcpClient::sendMessage);
-
 }
 
 void TcpClient::on_loginButton_clicked()

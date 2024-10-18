@@ -31,7 +31,6 @@ private slots:
     void onReadyRead();
     void onConnected();
     void onDisconnected();
-    //void on_sendMessage(Message msg); // Message 객체를 받는 새로운 슬롯
 
 signals:
     void sendMessage(Message msg); // Message 객체를 전달하는 시그널
