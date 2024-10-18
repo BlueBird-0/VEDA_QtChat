@@ -23,6 +23,7 @@ public:
     static bool deleteTable(const QString& tableName);
     static bool initMessageTable();
     static bool addMessage(const QString& room, const QString& sender, const QString& message);
+    QSqlTableModel* memoryGetMessagesByRoomId(const QString& roomId);
 };
 
 #endif // DBMANAGER_H

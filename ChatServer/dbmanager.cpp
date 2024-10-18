@@ -7,7 +7,7 @@
 #include <QSqlQueryModel>
 #include <QString>
 #include <QDebug>
-
+using namespace std;
 
 bool DBManager::initDB()
 {
@@ -35,9 +35,6 @@ bool DBManager::initDB()
     }
     if(!isTableExists(QString("message"))){
         initMessageTable();
-        addMessage(QString("0"), QString("testAdmin"), QString("hello chat."));
-        addMessage(QString("0"), QString("testAdmin"), QString("hi."));
-        addMessage(QString("0"), QString("testAdmin"), QString("WTF."));
     }
 
     return true;
@@ -163,6 +160,28 @@ QSqlTableModel* DBManager::getQueryModel()
 QSqlTableModel* DBManager::getMessageQueryModel()
 {
     return messageQueryModel;
+}
+
+QSqlTableModel* DBManager::memoryGetMessagesByRoomId(const QString& roomId)
+{
+    // Create a new QSqlTableModel
+    QSqlTableModel* model = new QSqlTableModel(nullptr, QSqlDatabase::database());
+
+    // Set the table name
+    model->setTable("message");
+
+    // Apply the filter for the specified roomId
+    model->setFilter(QString("room = '%1'").arg(roomId));
+
+    // Select the data from the table
+    model->select();
+
+    // Optionally, you could check for errors here
+    if (model->lastError().isValid()) {
+        qDebug() << "Error retrieving messages:" << model->lastError().text();
+    }
+
+    return model; // Return the model containing the messages
 }
 
 DBManager::DBManager()

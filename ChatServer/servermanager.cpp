@@ -139,6 +139,8 @@ void serverManager::processMessage()
     } else if (action == "send_message") {
         QString roomName = jsonObj["room"].toString();
         QString message = jsonObj["message"].toString();
+        dbManager->addMessage(roomName, clients[clientSocket], message);
+
         sendMessageToRoom(roomName, message, clientSocket);
     }
 }
@@ -212,6 +214,8 @@ void serverManager::joinRoom(QTcpSocket* client, const QString& roomName)
         response["room"] = roomName;
         client->write(QJsonDocument(response).toJson());
 
+        loadMessageRoom(roomName);
+
         ui->logTextEdit->appendPlainText(QString("User %1 joined room: %2").arg(clients[client], roomName));
     } else {
         QJsonObject response;
@@ -259,6 +263,23 @@ void serverManager::sendMessageToRoom(const QString& roomName, const QString& me
         ui->logTextEdit->appendPlainText(QString("Message in %1 from %2: %3").arg(roomName, clients[sender], message));
     }
 }
+
+void serverManager::loadMessageRoom(QString roomName)
+{
+    QSqlTableModel* model = dbManager->memoryGetMessagesByRoomId(roomName);
+
+    // Iterate through the rows of the model
+    for (int row = 0; row < model->rowCount(); ++row) {
+        int message_id = model->data(model->index(row, 0)).toInt();
+        QString room = model->data(model->index(row, 1)).toString();
+        QString time = model->data(model->index(row, 2)).toString();
+        QString sender = model->data(model->index(row, 3)).toString();
+        QString message = model->data(model->index(row, 4)).toString();
+        qDebug() << QString::number(message_id) <<" "<< room <<" "<< time<<" "<< sender<<" "<<message;
+    }
+    delete model;
+}
+
 
 void serverManager::on_pushButton_clicked()
 {
