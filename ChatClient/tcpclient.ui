@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>550</height>
+    <width>600</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,28 +15,28 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>Server IP:</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item row="0" column="1">
       <widget class="QLineEdit" name="serverIP"/>
      </item>
-     <item>
+     <item row="0" column="2">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Port:</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item row="0" column="3">
       <widget class="QLineEdit" name="serverPort"/>
      </item>
-     <item>
+     <item row="0" column="4">
       <widget class="QPushButton" name="connectButton">
        <property name="text">
         <string>Connect</string>
@@ -46,7 +46,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label_3">
        <property name="text">
@@ -67,7 +67,7 @@
      <item>
       <widget class="QLineEdit" name="passwordEdit">
        <property name="echoMode">
-        <enum>QLineEdit::Password</enum>
+        <enum>QLineEdit::EchoMode::Password</enum>
        </property>
       </widget>
      </item>
@@ -81,18 +81,11 @@
     </layout>
    </item>
    <item>
-    <widget class="QPlainTextEdit" name="chatDisplay">
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QLineEdit" name="roomNameEdit">
        <property name="placeholderText">
-        <string>Room Name</string>
+        <string>Enter room name</string>
        </property>
       </widget>
      </item>
@@ -120,11 +113,14 @@
     </layout>
    </item>
    <item>
+    <widget class="QTextBrowser" name="chatDisplay"/>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QLineEdit" name="messageEdit">
        <property name="placeholderText">
-        <string>Type your message here</string>
+        <string>Enter message</string>
        </property>
       </widget>
      </item>
@@ -132,6 +128,13 @@
       <widget class="QPushButton" name="sendButton">
        <property name="text">
         <string>Send</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="sendFileButton">
+       <property name="text">
+        <string>Send File</string>
        </property>
       </widget>
      </item>

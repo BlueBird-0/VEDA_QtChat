@@ -4,27 +4,34 @@
 #include <QMessageBox>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDateTime>
+#include <QMimeDatabase>
 
 TcpClient::TcpClient(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::TcpClient),
     socket(new QTcpSocket(this)),
-    isLoggedIn(false)
+    isLoggedIn(false),
+    currentDownloadFile(nullptr),
+    downloadProgress(nullptr)
 {
     ui->setupUi(this);
 
     connect(socket, &QTcpSocket::readyRead, this, &TcpClient::onReadyRead);
     connect(socket, &QTcpSocket::connected, this, &TcpClient::onConnected);
     connect(socket, &QTcpSocket::disconnected, this, &TcpClient::onDisconnected);
+    connect(ui->chatDisplay, &QTextBrowser::anchorClicked, this, &TcpClient::handleFileDownloadRequest);
 
     ui->serverIP->setText("127.0.0.1");
     ui->serverPort->setText("5432");
-
+    ui->chatDisplay->setOpenExternalLinks(false);
     updateUIState();
 }
 
 TcpClient::~TcpClient()
 {
+    delete currentDownloadFile;
+    delete downloadProgress;
     if(socket->state() == QAbstractSocket::ConnectedState) {
         socket->disconnectFromHost();
     }
@@ -48,6 +55,7 @@ void TcpClient::updateUIState()
     ui->leaveRoomButton->setEnabled(isLoggedIn && !currentRoom.isEmpty());
     ui->messageEdit->setEnabled(isLoggedIn && !currentRoom.isEmpty());
     ui->sendButton->setEnabled(isLoggedIn && !currentRoom.isEmpty());
+    ui->sendFileButton->setEnabled(isLoggedIn && !currentRoom.isEmpty());
 }
 
 void TcpClient::on_connectButton_clicked()
@@ -77,12 +85,15 @@ void TcpClient::on_sendButton_clicked()
 {
     if(isLoggedIn && !currentRoom.isEmpty()) {
         QString message = ui->messageEdit->text();
-        QJsonObject jsonObj;
-        jsonObj["action"] = "send_message";
-        jsonObj["room"] = currentRoom;
-        jsonObj["message"] = message;
-        sendJson(jsonObj);
-        ui->messageEdit->clear();
+        if (!message.isEmpty()) {
+            QJsonObject jsonObj;
+            jsonObj["action"] = "send_message";
+            jsonObj["room"] = currentRoom;
+            jsonObj["message"] = message;
+            sendJson(jsonObj);
+            appendMessage(username, message); // Show own message immediately
+            ui->messageEdit->clear();
+        }
     }
 }
 
@@ -115,7 +126,48 @@ void TcpClient::on_leaveRoomButton_clicked()
         jsonObj["action"] = "leave_room";
         jsonObj["room"] = currentRoom;
         sendJson(jsonObj);
+        currentRoom.clear();
+        updateUIState();
     }
+}
+
+void TcpClient::on_sendFileButton_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Select File to Send");
+    if (filePath.isEmpty()) return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, "Error", "Could not open file for reading");
+        return;
+    }
+
+    QFileInfo fileInfo(file);
+    QMimeDatabase db;
+    QString mimeType = db.mimeTypeForFile(fileInfo).name();
+
+    // First, send file info to server
+    QJsonObject jsonObj;
+    jsonObj["action"] = "init_file_upload";
+    jsonObj["filename"] = fileInfo.fileName();
+    jsonObj["filesize"] = fileInfo.size();
+    jsonObj["mimetype"] = mimeType;
+    jsonObj["room"] = currentRoom;
+    sendJson(jsonObj);
+
+    // Read file content
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    // Send file content
+    QJsonObject fileObj;
+    fileObj["action"] = "upload_file";
+    fileObj["room"] = currentRoom;
+    fileObj["data"] = QString(fileData.toBase64());
+    sendJson(fileObj);
+
+    // Show own file message immediately
+    appendMessage(username, fileInfo.fileName(), true);
 }
 
 void TcpClient::onReadyRead()
@@ -130,23 +182,31 @@ void TcpClient::onReadyRead()
         bool success = jsonObj["success"].toBool();
         if (success) {
             isLoggedIn = true;
-            ui->chatDisplay->appendPlainText("Logged in successfully");
+            ui->chatDisplay->append("Logged in successfully");
         } else {
-            ui->chatDisplay->appendPlainText("Login failed: " + jsonObj["message"].toString());
+            ui->chatDisplay->append("Login failed: " + jsonObj["message"].toString());
         }
         updateUIState();
     } else if (action == "room_created" || action == "joined_room") {
         currentRoom = jsonObj["room"].toString();
-        ui->chatDisplay->appendPlainText(QString("Entered room: %1").arg(currentRoom));
+        ui->chatDisplay->append(QString("Entered room: %1").arg(currentRoom));
         updateUIState();
     } else if (action == "left_room") {
-        ui->chatDisplay->appendPlainText(QString("Left room: %1").arg(currentRoom));
+        ui->chatDisplay->append(QString("Left room: %1").arg(currentRoom));
         currentRoom.clear();
         updateUIState();
     } else if (action == "new_message") {
         QString sender = jsonObj["sender"].toString();
         QString message = jsonObj["message"].toString();
-        ui->chatDisplay->appendPlainText(QString("%1: %2").arg(sender, message));
+        appendMessage(sender, message);
+    } else if (action == "file_shared") {
+        QString sender = jsonObj["sender"].toString();
+        QString fileId = jsonObj["fileId"].toString();
+        QString fileName = jsonObj["filename"].toString();
+        fileLinks[fileId] = fileName;
+        appendMessage(sender, fileId, true);
+    } else if (action == "file_data") {
+        processFileDownload(jsonObj);
     } else if (action == "error") {
         QString errorMessage = jsonObj["message"].toString();
         QMessageBox::warning(this, "Error", errorMessage);
@@ -155,13 +215,13 @@ void TcpClient::onReadyRead()
 
 void TcpClient::onConnected()
 {
-    ui->chatDisplay->appendPlainText("Connected to server");
+    ui->chatDisplay->append("Connected to server");
     updateUIState();
 }
 
 void TcpClient::onDisconnected()
 {
-    ui->chatDisplay->appendPlainText("Disconnected from server");
+    ui->chatDisplay->append("Disconnected from server");
     isLoggedIn = false;
     currentRoom.clear();
     updateUIState();
@@ -171,4 +231,84 @@ void TcpClient::sendJson(const QJsonObject &jsonObj)
 {
     QJsonDocument jsonDoc(jsonObj);
     socket->write(jsonDoc.toJson());
+}
+
+void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
+{
+    QString urlString = fileId.toString();
+    QJsonObject jsonObj;
+    jsonObj["action"] = "request_file";
+    jsonObj["fileId"] = urlString;
+    sendJson(jsonObj);
+
+    downloadProgress = new QProgressDialog("Downloading file...", "Cancel", 0, 100, this);
+    downloadProgress->setWindowModality(Qt::WindowModal);
+    connect(downloadProgress, &QProgressDialog::canceled, this, [this]() {
+        if (currentDownloadFile) {
+            currentDownloadFile->close();
+            currentDownloadFile->remove();
+            delete currentDownloadFile;
+            currentDownloadFile = nullptr;
+        }
+    });
+}
+
+void TcpClient::processFileDownload(const QJsonObject &jsonObj)
+{
+    QString fileName = jsonObj["filename"].toString();
+    QString saveFilePath = QFileDialog::getSaveFileName(this, "Save File As", fileName);
+
+    if (saveFilePath.isEmpty()) return;
+
+    currentDownloadFile = new QFile(saveFilePath);
+    if (!currentDownloadFile->open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "Error", "Could not open file for writing");
+        delete currentDownloadFile;
+        currentDownloadFile = nullptr;
+        return;
+    }
+
+    QByteArray fileData = QByteArray::fromBase64(jsonObj["data"].toString().toLatin1());
+    currentDownloadFile->write(fileData);
+    onFileDownloadFinished();
+}
+
+void TcpClient::onFileDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
+{
+    if (downloadProgress && bytesTotal > 0) {
+        int progress = (bytesReceived * 100) / bytesTotal;
+        downloadProgress->setValue(progress);
+    }
+}
+
+void TcpClient::onFileDownloadFinished()
+{
+    if (currentDownloadFile) {
+        currentDownloadFile->close();
+        delete currentDownloadFile;
+        currentDownloadFile = nullptr;
+    }
+    if (downloadProgress) {
+        downloadProgress->close();
+        delete downloadProgress;
+        downloadProgress = nullptr;
+    }
+    QMessageBox::information(this, "Download Complete", "File has been downloaded successfully.");
+}
+
+void TcpClient::appendMessage(const QString &sender, const QString &message, bool isFile)
+{
+    QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString formattedMessage;
+
+    if (isFile) {
+        // For files, create a clickable link
+        formattedMessage = QString("[%1] %2 shared a file: <a href='%3'>%4</a>")
+                               .arg(timestamp, sender, message, fileLinks.value(message, message));
+    } else {
+        formattedMessage = QString("[%1] %2: %3")
+        .arg(timestamp, sender, message);
+    }
+
+    ui->chatDisplay->append(formattedMessage);
 }
