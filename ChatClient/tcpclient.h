@@ -4,6 +4,7 @@
 
 #include <QWidget>
 #include <QTcpSocket>
+#include "message.h"
 using namespace std;
 class QByteArray;
 
@@ -30,8 +31,9 @@ private slots:
     void onReadyRead();
     void onConnected();
     void onDisconnected();
-
+    void on_sendMessage(Message msg); // Message 객체를 받는 새로운 슬롯
 signals:
+    void sendMessage(Message msg); // Message 객체를 전달하는 시그널
 private:
     Ui::TcpClient *ui;
     QString currentRoom;
@@ -40,6 +42,7 @@ private:
 
     void sendJson(const QJsonObject &jsonObj);
     void updateUIState();
+    void recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList);
 };
 
 #endif // TCPCLIENT_H

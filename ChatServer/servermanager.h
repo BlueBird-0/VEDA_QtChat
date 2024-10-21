@@ -10,6 +10,7 @@
 
 using namespace std;
 class MainWindow;
+class Message;
 
 namespace Ui {
 class serverManager;
@@ -56,6 +57,9 @@ private:
     void createRoom(QTcpSocket* client, const QString& roomName);
     void joinRoom(QTcpSocket* client, const QString& roomName);
     void leaveRoom(QTcpSocket* client, const QString& roomName);
+    void sendMessage(QTcpSocket& clients, Message& messageList);
+    void sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList);
+
     void sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender);
     void sendMessageToClient(const QString& roomName, const QString& message, const QString& senderStr, QTcpSocket* client);
     void sendPrevMessagesRoomToClient(const QString &roomName, QTcpSocket* client);

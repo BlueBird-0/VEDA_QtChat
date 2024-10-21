@@ -7,6 +7,8 @@
 #include <mainwindow.h>
 #include <QSqlTableModel>
 #include <QTableView>
+#include <message.h>
+
 using namespace std;
 
 serverManager::serverManager(QWidget *parent)
@@ -115,7 +117,7 @@ void serverManager::clientDisconnect()
 }
 
 void serverManager::processMessage()
-{
+{/*
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
     if (!clientSocket)
         return;
@@ -142,7 +144,29 @@ void serverManager::processMessage()
         dbManager->insertMessage(roomName, clients[clientSocket], message);
 
         sendMessageToRoom(roomName, message, clientSocket);
-    }
+    }*/
+
+    QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
+        if (!clientSocket)
+            return;
+
+        QByteArray data = clientSocket->readAll();
+        QString clientId = clients[clientSocket];
+
+        Message recvMsg(data);
+        qDebug() <<"["<< recvMsg.senderId<<"]"<<recvMsg.messageType<<"-"<<recvMsg.message;
+
+        if( recvMsg.messageType == MessageType::Login){
+            //bool loginSuccess = mainWindow->dbManager.checkLogin(recvMsg.senderId, recvMsg.message);
+            bool loginSuccess = true;
+            Message ackMsg(recvMsg.senderId, MessageType::Login, loginSuccess? "Success": "Fail");
+
+            sendMessage(*clientSocket, ackMsg);
+        }
+
+        // Log the received message
+        qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
+
 }
 
 void serverManager::handleLogin(QTcpSocket* client, const QString& username, const QString& password)
@@ -294,6 +318,29 @@ void serverManager::sendPrevMessagesRoomToClient(const QString &roomName, QTcpSo
         //sendMessageToClient(room, message, sender, client);
     }
     delete model;
+}
+
+
+//send message for clients.
+void serverManager::sendMessage(QTcpSocket& client, Message& message)
+{
+    vector<QTcpSocket*> clients;
+    clients.push_back(&client);
+    vector<Message*> messages;
+    messages.push_back(&message);
+    sendMessage(clients, messages);
+}
+
+void serverManager::sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList)
+{
+    QByteArray packet;
+    for(auto msg: messageList){
+        packet.append(msg->getByteArray());
+    }
+
+    for(auto client : clients){
+        client->write(packet);
+    }
 }
 
 
