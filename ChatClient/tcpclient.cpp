@@ -126,6 +126,7 @@ void TcpClient::onReadyRead()
     QJsonObject jsonObj = jsonDoc.object();
 
     QString action = jsonObj["action"].toString();
+    qDebug() << "onReadyRead(): action[" <<action <<"]";
 
     if (action == "login_response") {
         bool success = jsonObj["success"].toBool();

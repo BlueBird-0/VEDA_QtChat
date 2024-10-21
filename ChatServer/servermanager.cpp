@@ -30,7 +30,7 @@ serverManager::serverManager(QWidget *parent)
     tableview = new QTableView();
     tableview->setModel(queryModel);
     tableview->setWindowTitle(QObject::tr("DB_user table"));
-    tableview->show( );
+    //tableview->show( );
 
 
     // message Table Test
@@ -43,7 +43,7 @@ serverManager::serverManager(QWidget *parent)
     messageTableView = new QTableView();
     messageTableView->setModel(messageQueryModel);
     messageTableView->setWindowTitle(QObject::tr("DB_message table"));
-    messageTableView->show( );
+    //messageTableView->show( );
 
     // Add some dummy user credentials (in a real app, you'd use a database)
 }
@@ -139,7 +139,7 @@ void serverManager::processMessage()
     } else if (action == "send_message") {
         QString roomName = jsonObj["room"].toString();
         QString message = jsonObj["message"].toString();
-        dbManager->addMessage(roomName, clients[clientSocket], message);
+        dbManager->insertMessage(roomName, clients[clientSocket], message);
 
         sendMessageToRoom(roomName, message, clientSocket);
     }
@@ -185,7 +185,7 @@ void serverManager::createRoom(QTcpSocket* client, const QString& roomName)
         response["action"] = "room_created";
         response["room"] = roomName;
         client->write(QJsonDocument(response).toJson());
-
+        dbManager->insertRoom(roomName);
         ui->logTextEdit->appendPlainText(QString("Room created: %1").arg(roomName));
     } else {
         QJsonObject response;
@@ -214,7 +214,8 @@ void serverManager::joinRoom(QTcpSocket* client, const QString& roomName)
         response["room"] = roomName;
         client->write(QJsonDocument(response).toJson());
 
-        loadMessageRoom(roomName);
+        //send previous Messages
+        //sendPrevMessagesRoomToClient(roomName, client);
 
         ui->logTextEdit->appendPlainText(QString("User %1 joined room: %2").arg(clients[client], roomName));
     } else {
@@ -264,7 +265,21 @@ void serverManager::sendMessageToRoom(const QString& roomName, const QString& me
     }
 }
 
-void serverManager::loadMessageRoom(QString roomName)
+void serverManager::sendMessageToClient(const QString& roomName, const QString& message, const QString& senderStr, QTcpSocket* client)
+{
+    QJsonObject messageObj;
+    messageObj["action"] = "new_message";
+//    messageObj["time"] = time;
+    messageObj["sender"] = senderStr;
+    messageObj["message"] = message;
+
+    client->write(QJsonDocument(messageObj).toJson());
+    qDebug() << "sendMessageMessage:"<< messageObj["action"] <<" "<< roomName<<" "<< time<<" "<< messageObj["sender"]<<" "<<messageObj["message"];
+
+    ui->logTextEdit->appendPlainText(QString("Message in %1 from %2: %3").arg(roomName, senderStr, message));
+}
+
+void serverManager::sendPrevMessagesRoomToClient(const QString &roomName, QTcpSocket* client)
 {
     QSqlTableModel* model = dbManager->memoryGetMessagesByRoomId(roomName);
 
@@ -275,7 +290,8 @@ void serverManager::loadMessageRoom(QString roomName)
         QString time = model->data(model->index(row, 2)).toString();
         QString sender = model->data(model->index(row, 3)).toString();
         QString message = model->data(model->index(row, 4)).toString();
-        qDebug() << QString::number(message_id) <<" "<< room <<" "<< time<<" "<< sender<<" "<<message;
+
+        //sendMessageToClient(room, message, sender, client);
     }
     delete model;
 }

@@ -57,10 +57,10 @@ private:
     void joinRoom(QTcpSocket* client, const QString& roomName);
     void leaveRoom(QTcpSocket* client, const QString& roomName);
     void sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender);
+    void sendMessageToClient(const QString& roomName, const QString& message, const QString& senderStr, QTcpSocket* client);
+    void sendPrevMessagesRoomToClient(const QString &roomName, QTcpSocket* client);
     void handleLogin(QTcpSocket* client, const QString& username, const QString& password);
     void loadMessageRoom(QString roomName);
-    //QMap<QTcpSocket*, QString> clients; // Map to store client sockets and their identifiers
-
 };
 
 #endif // SERVERMANAGER_H

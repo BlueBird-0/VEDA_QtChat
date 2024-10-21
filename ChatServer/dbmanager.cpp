@@ -17,45 +17,53 @@ bool DBManager::initDB()
 
     deleteTable(QString("user"));//TODO : test code.
     deleteTable(QString("message"));//TODO : test code.
+    deleteTable(QString("room"));//TODO : test code.
 
+    QSqlQuery query;
     if (!isTableExists(QString("user"))){
-        QSqlQuery query;
-
-        query.exec("CREATE TABLE IF NOT EXISTS user ("
+        if (!query.exec("CREATE TABLE IF NOT EXISTS user ("
                     "idx INTEGER PRIMARY KEY,"
                     "id VARCHAR(20) NOT NULL,"
                     "pw VARCHAR(20) NOT NULL,"
-                    "permission VARCHAR(20));");
+                    "permission VARCHAR(20));")) {
+            qDebug() << "Error creating user table:" << query.lastError().text();
+        }
 
-        createUser(QString("root"), QString("1q2w3e4r!"), QString("1"));
-        createUser(QString("admin"), QString("1q2w3e4r!"), QString("1"));
-        createUser(QString("iam"), QString("aboy"), QString("1"));
-        createUser(QString("user1"), QString("pass1"), QString("1"));
-        createUser(QString("user2"), QString("pass2"), QString("1"));
+        // Test Account
+        insertUser(QString("root"), QString("1q2w3e4r!"), QString("1"));
+        insertUser(QString("admin"), QString("1q2w3e4r!"), QString("1"));
+        insertUser(QString("iam"), QString("aboy"), QString("1"));
+        insertUser(QString("user1"), QString("pass1"), QString("1"));
+        insertUser(QString("user2"), QString("pass2"), QString("1"));
     }
+
     if(!isTableExists(QString("message"))){
-        initMessageTable();
+        if (!query.exec("CREATE TABLE IF NOT EXISTS message ("
+                        "message_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        "room VARCHAR(20),"
+                        "time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                        "sender VARCHAR(20),"
+                        "message VARCHAR(255));" )) {
+            qDebug() << "Error creating message table:" << query.lastError().text();
+        }
+    }
+
+    if(!isTableExists(QString("room"))){
+        if (!query.exec("CREATE TABLE IF NOT EXISTS room ("
+                        "room_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        "room_name VARCHAR(40),"
+                        "create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" )) {
+            qDebug() << "Error creating room table:" << query.lastError().text();
+        }
+        insertRoom("testRoom1");    //TODO: testcode
+        insertRoom("testRoom2");    //TODO: testcode
+        insertRoom("testRoom3");    //TODO: testcode
     }
 
     return true;
 }
 
-bool DBManager::initMessageTable()
-{
-    QSqlQuery query;
-    if (!query.exec("CREATE TABLE IF NOT EXISTS message ("
-                    "message_id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                    "room VARCHAR(20),"
-                    "time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-                    "sender VARCHAR(20),"
-                    "message VARCHAR(255));" )) {
-        qDebug() << "Error creating message table:" << query.lastError().text();
-        return false;
-    }
-    return true;
-}
-
-bool DBManager::addMessage(const QString& room, const QString& sender, const QString& message)
+bool DBManager::insertMessage(const QString& room, const QString& sender, const QString& message)
 {
     QSqlQuery query;
 
@@ -76,12 +84,21 @@ bool DBManager::addMessage(const QString& room, const QString& sender, const QSt
     return true;
 }
 
-bool DBManager::createUser(QString id, QString pw, QString permission)
+bool DBManager::insertUser(QString id, QString pw, QString permission)
 {
     QString insertQuery = QString("INSERT INTO user(id, pw, permission) VALUES('%1', '%2', '%3')")
             .arg(id)
             .arg(pw)
             .arg(permission);
+
+    QSqlQuery query;
+    return query.exec( insertQuery);
+}
+
+bool DBManager::insertRoom(const QString roomName)
+{
+    QString insertQuery = QString("INSERT INTO room(room_name) VALUES('%1')")
+            .arg(roomName);
 
     QSqlQuery query;
     return query.exec( insertQuery);
