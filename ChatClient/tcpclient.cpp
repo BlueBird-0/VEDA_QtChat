@@ -2,8 +2,6 @@
 #include "tcpclient.h"
 #include "ui_tcpclient.h"
 #include <QMessageBox>
-#include <QJsonDocument>
-#include <QJsonObject>
 using namespace std;
 
 TcpClient::TcpClient(QWidget *parent) :
@@ -69,12 +67,6 @@ void TcpClient::on_loginButton_clicked()
     username = ui->usernameEdit->text();
     QString password = ui->passwordEdit->text();
 
-//    QJsonObject jsonObj;
-//    jsonObj["action"] = "login";
-//    jsonObj["username"] = username;
-//    jsonObj["password"] = password;
-//    sendJson(jsonObj);
-
     Message msg;
     msg.SetSenderId(username);
     msg.SetMessageType(MessageType::Login);
@@ -88,19 +80,13 @@ void TcpClient::on_loginButton_clicked()
 void TcpClient::on_sendButton_clicked()
 {
     if(isLoggedIn && !currentRoom.isEmpty()) {
-//        QString message = ui->messageEdit->text();
-//        QJsonObject jsonObj;
-//        jsonObj["action"] = "send_message";
-//        jsonObj["room"] = currentRoom;
-//        jsonObj["message"] = message;
-//        sendJson(jsonObj);
-//        ui->messageEdit->clear();
-
+        QString message = ui->messageEdit->text();
         Message msg;
-        //msg.SetSenderId(LoginInfo::loginedId);
-       // msg.SetMessageType(MessageType::Login);
-       // msg.SetMessage(ui->messageEdit->text());
-       // ui->messageEdit->clear();
+        msg.SetSenderId(username);
+        msg.SetRoomName(currentRoom);
+        msg.SetMessageType(MessageType::send_Message);
+        msg.SetMessage(message);
+        ui->messageEdit->clear();
 
         emit sendMessage(msg);  //서버에 msg 전송하는 이벤트 발생
     }
@@ -120,10 +106,11 @@ void TcpClient::on_createRoomButton_clicked()
 {
     QString roomName = ui->roomNameEdit->text();
     if(!roomName.isEmpty()) {
-        QJsonObject jsonObj;
-        jsonObj["action"] = "create_room";
-        jsonObj["room"] = roomName;
-        sendJson(jsonObj);
+        Message msg;
+        msg.SetSenderId(username);
+        msg.SetMessageType(MessageType::create_Room);
+        msg.SetMessage(roomName);
+        sendMessage(msg);
     }
 }
 
@@ -131,76 +118,59 @@ void TcpClient::on_joinRoomButton_clicked()
 {
     QString roomName = ui->roomNameEdit->text();
     if(!roomName.isEmpty()) {
-        QJsonObject jsonObj;
-        jsonObj["action"] = "join_room";
-        jsonObj["room"] = roomName;
-        sendJson(jsonObj);
+        Message msg;
+        msg.SetSenderId(username);
+        msg.SetMessageType(MessageType::join_Room);
+        msg.SetMessage(roomName);
+        sendMessage(msg);
     }
 }
 
 void TcpClient::on_leaveRoomButton_clicked()
 {
     if(!currentRoom.isEmpty()) {
-        QJsonObject jsonObj;
-        jsonObj["action"] = "leave_room";
-        jsonObj["room"] = currentRoom;
-        sendJson(jsonObj);
+        Message msg;
+        msg.SetMessageType(MessageType::left_Room);
+        msg.SetRoomName(currentRoom);
+        sendMessage(msg);
     }
 }
 
 void TcpClient::onReadyRead()
 {
-//    QByteArray data = socket->readAll();
-//    QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
-//    QJsonObject jsonObj = jsonDoc.object();
-
-//    QString action = jsonObj["action"].toString();
-//    qDebug() << "onReadyRead(): action[" <<action <<"]";
-
-//    if (action == "login_response") {
-//        bool success = jsonObj["success"].toBool();
-//        if (success) {
-//            isLoggedIn = true;
-//            ui->chatDisplay->appendPlainText("Logged in successfully");
-//        } else {
-//            ui->chatDisplay->appendPlainText("Login failed: " + jsonObj["message"].toString());
-//        }
-//        updateUIState();
-//    } else if (action == "room_created" || action == "joined_room") {
-//        currentRoom = jsonObj["room"].toString();
-//        ui->chatDisplay->appendPlainText(QString("Entered room: %1").arg(currentRoom));
-//        updateUIState();
-//    } else if (action == "left_room") {
-//        ui->chatDisplay->appendPlainText(QString("Left room: %1").arg(currentRoom));
-//        currentRoom.clear();
-//        updateUIState();
-//    } else if (action == "new_message") {
-//        QString sender = jsonObj["sender"].toString();
-//        QString message = jsonObj["message"].toString();
-//        ui->chatDisplay->appendPlainText(QString("%1: %2").arg(sender, message));
-//    } else if (action == "error") {
-//        QString errorMessage = jsonObj["message"].toString();
-//        QMessageBox::warning(this, "Error", errorMessage);
-//    }
-
     QByteArray byteArray = socket->readAll();
         vector<Message> messageList;
         recvMessage(byteArray, messageList);
 
         for(auto msg : messageList){
-            ui->chatDisplay->appendPlainText(QString::fromUtf8(msg.senderId) + " : " + QString::fromUtf8(msg.message));
             if(msg.messageType == MessageType::Login)
             {
                 if(msg.message == QString("Success"))
                 {
-                    //LoginInfo::loginSuccess = true;
-                    //LoginInfo::loginedId =msg.senderId;
-
+                    isLoggedIn = true;
+                    ui->chatDisplay->appendPlainText("Logged in successfully");
                     qDebug() << "login Success";
                 } else {
                     // 로그인 실패
+                    ui->chatDisplay->appendPlainText("Login failed: " + QString(msg.message));
                     qDebug() << "login Failed";
                 }
+                updateUIState();
+            } else if (msg.messageType == MessageType::create_Room || msg.messageType == MessageType::join_Room) {
+                currentRoom = QString(msg.message);
+                ui->chatDisplay->appendPlainText(QString("Entered room: %1").arg(currentRoom));
+                updateUIState();
+            } else if (msg.messageType == MessageType::new_Message) {
+                QString sender = msg.senderId;
+                QString message = msg.message;
+                ui->chatDisplay->appendPlainText(QString("%1: %2").arg(sender, message));
+            } else if (msg.messageType == MessageType::Error) {
+                QString errorMessage = msg.message;
+                QMessageBox::warning(this, "Error", errorMessage);
+            } else if (msg.messageType == MessageType::left_Room) {
+                ui->chatDisplay->appendPlainText(QString("Left room: %1").arg(currentRoom));
+                currentRoom.clear();
+                updateUIState();
             }
         }
 }
@@ -219,32 +189,17 @@ void TcpClient::onDisconnected()
     updateUIState();
 }
 
-void TcpClient::sendJson(const QJsonObject &jsonObj)
-{
-    QJsonDocument jsonDoc(jsonObj);
-    socket->write(jsonDoc.toJson());
-}
-
 void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
 {
     // QByteArray를 QString로 변환하고, 구분자를 '\\'로 지정하여 분리
     QString dataString = QString::fromUtf8(byteArray);
-    QStringList splits = dataString.split("\\"); // '\\'를 기준으로 문자열을 분리
+    QStringList splits = dataString.split("&&"); // '\\'를 기준으로 문자열을 분리
     qDebug()<< "recvMsgList[" << splits.size() << "] :" << dataString;
-    Message msg;
 
-    for(int i=0; i<splits.size()-1; i+=3)
+    for(int i=0; i<splits.size()-1; i++)
     {
-        // 분리된 값들을 각각 senderId, messageType, message에 할당
-        strncpy(msg.senderId, splits[i+0].toUtf8().data(), sizeof(msg.senderId) - 1);
-        msg.senderId[sizeof(msg.senderId) - 1] = '\0';  // null-terminate
+        QByteArray msgBytes = splits[i].toUtf8();
 
-        QString msgTypeStr = splits[i+1].toUtf8().data();
-        msg.messageType = (MessageType)msgTypeStr.toInt();
-
-
-        strncpy(msg.message, splits[i+2].toUtf8().data(), sizeof(msg.message) - 1);
-        msg.message[sizeof(msg.message) - 1] = '\0';  // null-terminate
-        recvMsgList.push_back(msg);
+        recvMsgList.push_back(msgBytes);
     }
 }

@@ -40,7 +40,6 @@ private:
     QString username;
     bool isLoggedIn;
 
-    void sendJson(const QJsonObject &jsonObj);
     void updateUIState();
     void recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList);
 };

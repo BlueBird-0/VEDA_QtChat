@@ -2,8 +2,6 @@
 #include "servermanager.h"
 #include "ui_servermanager.h"
 #include <QMessageBox>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <mainwindow.h>
 #include <QSqlTableModel>
 #include <QTableView>
@@ -117,35 +115,7 @@ void serverManager::clientDisconnect()
 }
 
 void serverManager::processMessage()
-{/*
-    QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
-    if (!clientSocket)
-        return;
-
-    QByteArray data = clientSocket->readAll();
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
-    QJsonObject jsonObj = jsonDoc.object();
-
-    QString action = jsonObj["action"].toString();
-
-    if (action == "login") {
-        QString username = jsonObj["username"].toString();
-        QString password = jsonObj["password"].toString();
-        handleLogin(clientSocket, username, password);
-    } else if (action == "create_room") {
-        createRoom(clientSocket, jsonObj["room"].toString());
-    } else if (action == "join_room") {
-        joinRoom(clientSocket, jsonObj["room"].toString());
-    } else if (action == "leave_room") {
-        leaveRoom(clientSocket, jsonObj["room"].toString());
-    } else if (action == "send_message") {
-        QString roomName = jsonObj["room"].toString();
-        QString message = jsonObj["message"].toString();
-        dbManager->insertMessage(roomName, clients[clientSocket], message);
-
-        sendMessageToRoom(roomName, message, clientSocket);
-    }*/
-
+{
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
         if (!clientSocket)
             return;
@@ -154,14 +124,24 @@ void serverManager::processMessage()
         QString clientId = clients[clientSocket];
 
         Message recvMsg(data);
-        qDebug() <<"["<< recvMsg.senderId<<"]"<<recvMsg.messageType<<"-"<<recvMsg.message;
+        qDebug() <<"["<< recvMsg.senderId<<" : "<< recvMsg.roomName << "]"<<recvMsg.messageType<<"-"<<recvMsg.message;
 
         if( recvMsg.messageType == MessageType::Login){
-            //bool loginSuccess = mainWindow->dbManager.checkLogin(recvMsg.senderId, recvMsg.message);
-            bool loginSuccess = true;
-            Message ackMsg(recvMsg.senderId, MessageType::Login, loginSuccess? "Success": "Fail");
+            QString username(recvMsg.senderId);
+            QString password(recvMsg.message);
+            handleLogin(clientSocket, username, password);
+        } else if (recvMsg.messageType == MessageType::create_Room) {
+            createRoom(clientSocket, recvMsg.message);
+        } else if (recvMsg.messageType == MessageType::join_Room) {
+            joinRoom(clientSocket, recvMsg.message);
+        } else if (recvMsg.messageType == MessageType::left_Room) {
+            leaveRoom(clientSocket, recvMsg.roomName);
+        } else if (recvMsg.messageType == MessageType::send_Message) {
+            QString roomName = recvMsg.roomName;
+            QString message = recvMsg.message;
+            dbManager->insertMessage(roomName, clients[clientSocket], message);
 
-            sendMessage(*clientSocket, ackMsg);
+            sendMessageToRoom(roomName, message, clientSocket);
         }
 
         // Log the received message
@@ -171,32 +151,29 @@ void serverManager::processMessage()
 
 void serverManager::handleLogin(QTcpSocket* client, const QString& username, const QString& password)
 {
-    QJsonObject response;
-    response["action"] = "login_response";
-
+    Message ackMsg;
+    ackMsg.SetSenderId(username);
+    ackMsg.SetMessageType(MessageType::Login);
     bool loginSuccess = dbManager->checkLogin(username, password);
-    if (loginSuccess) {
-        clients[client] = username;
-        response["success"] = true;
-        response["message"] = "Login successful";
+    if(loginSuccess){
+        ackMsg.SetMessage(QString("Success"));
         ui->logTextEdit->appendPlainText(QString("User logged in: %1").arg(username));
+        clients[client] = username;
         updateClientList();
-    } else {
-        response["success"] = false;
-        response["message"] = "Invalid username or password";
+    }else{
+        ackMsg.SetMessage(QString("Fail"));
         ui->logTextEdit->appendPlainText(QString("Failed login attempt for username: %1").arg(username));
     }
-
-    client->write(QJsonDocument(response).toJson());
+    sendMessage(*client, ackMsg);
 }
 
 void serverManager::createRoom(QTcpSocket* client, const QString& roomName)
 {
     if (!clients.contains(client)) {
-        QJsonObject response;
-        response["action"] = "error";
-        response["message"] = "You must be logged in to create a room";
-        client->write(QJsonDocument(response).toJson());
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::Error);
+        ackMsg.SetMessage(QString("You must be logged in to create a room"));
+        sendMessage(*client, ackMsg);
         return;
     }
 
@@ -205,27 +182,28 @@ void serverManager::createRoom(QTcpSocket* client, const QString& roomName)
         rooms[roomName].insert(client);
         updateRoomList();
 
-        QJsonObject response;
-        response["action"] = "room_created";
-        response["room"] = roomName;
-        client->write(QJsonDocument(response).toJson());
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::create_Room);
+        ackMsg.SetMessage(roomName);
+        sendMessage(*client, ackMsg);
+
         dbManager->insertRoom(roomName);
         ui->logTextEdit->appendPlainText(QString("Room created: %1").arg(roomName));
     } else {
-        QJsonObject response;
-        response["action"] = "error";
-        response["message"] = "Room already exists";
-        client->write(QJsonDocument(response).toJson());
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::Error);
+        ackMsg.SetMessage(QString("Room already exists"));
+        sendMessage(*client, ackMsg);
     }
 }
 
 void serverManager::joinRoom(QTcpSocket* client, const QString& roomName)
 {
     if (!clients.contains(client)) {
-        QJsonObject response;
-        response["action"] = "error";
-        response["message"] = "You must be logged in to join a room";
-        client->write(QJsonDocument(response).toJson());
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::Error);
+        ackMsg.SetMessage(QString("You must be logged in to join a room"));
+        sendMessage(*client, ackMsg);
         return;
     }
 
@@ -233,20 +211,20 @@ void serverManager::joinRoom(QTcpSocket* client, const QString& roomName)
         rooms[roomName].insert(client);
         updateRoomList();
 
-        QJsonObject response;
-        response["action"] = "joined_room";
-        response["room"] = roomName;
-        client->write(QJsonDocument(response).toJson());
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::join_Room);
+        ackMsg.SetMessage(roomName);
+        sendMessage(*client, ackMsg);
 
         //send previous Messages
-        //sendPrevMessagesRoomToClient(roomName, client);
+        sendPrevMessagesRoomToClient(roomName, client);
 
         ui->logTextEdit->appendPlainText(QString("User %1 joined room: %2").arg(clients[client], roomName));
     } else {
-        QJsonObject response;
-        response["action"] = "error";
-        response["message"] = "Room does not exist";
-        client->write(QJsonDocument(response).toJson());
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::Error);
+        ackMsg.SetMessage(QString("Room does not exist"));
+        sendMessage(*client, ackMsg);
     }
 }
 
@@ -259,10 +237,10 @@ void serverManager::leaveRoom(QTcpSocket* client, const QString& roomName)
         }
         updateRoomList();
 
-        QJsonObject response;
-        response["action"] = "left_room";
-        response["room"] = roomName;
-        client->write(QJsonDocument(response).toJson());
+        Message response;
+        response.SetMessageType(MessageType::left_Room);
+        response.SetMessage(QString("Room does not exist"));
+        sendMessage(*client, response);
 
         ui->logTextEdit->appendPlainText(QString("User %1 left room: %2").arg(clients[client], roomName));
     }
@@ -271,17 +249,15 @@ void serverManager::leaveRoom(QTcpSocket* client, const QString& roomName)
 void serverManager::sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender)
 {
     if (rooms.contains(roomName) && rooms[roomName].contains(sender)) {
-        QJsonObject messageObj;
-        messageObj["action"] = "new_message";
-        messageObj["room"] = roomName;
-        messageObj["sender"] = clients[sender];
-        messageObj["message"] = message;
-
-        QByteArray messageData = QJsonDocument(messageObj).toJson();
+        Message ackMsg;
+        ackMsg.SetMessageType(MessageType::new_Message);
+        ackMsg.SetRoomName(roomName);
+        ackMsg.SetSenderId(clients[sender]);
+        ackMsg.SetMessage(message);
 
         for (QTcpSocket* client : rooms[roomName]) {
             if (client != sender) {
-                client->write(messageData);
+                sendMessage(*client, ackMsg);
             }
         }
 
@@ -291,14 +267,14 @@ void serverManager::sendMessageToRoom(const QString& roomName, const QString& me
 
 void serverManager::sendMessageToClient(const QString& roomName, const QString& message, const QString& senderStr, QTcpSocket* client)
 {
-    QJsonObject messageObj;
-    messageObj["action"] = "new_message";
-//    messageObj["time"] = time;
-    messageObj["sender"] = senderStr;
-    messageObj["message"] = message;
+    Message ackMsg;
+    ackMsg.SetMessageType(MessageType::new_Message);
+    ackMsg.SetRoomName(roomName);
+    ackMsg.SetSenderId(senderStr);
+    ackMsg.SetMessage(message);
+    sendMessage(*client, ackMsg);
+    qDebug() << "sendMessageMessage:"<< ackMsg.senderId<<" "<< ackMsg.message;
 
-    client->write(QJsonDocument(messageObj).toJson());
-    qDebug() << "sendMessageMessage:"<< messageObj["action"] <<" "<< roomName<<" "<< time<<" "<< messageObj["sender"]<<" "<<messageObj["message"];
 
     ui->logTextEdit->appendPlainText(QString("Message in %1 from %2: %3").arg(roomName, senderStr, message));
 }
@@ -315,7 +291,7 @@ void serverManager::sendPrevMessagesRoomToClient(const QString &roomName, QTcpSo
         QString sender = model->data(model->index(row, 3)).toString();
         QString message = model->data(model->index(row, 4)).toString();
 
-        //sendMessageToClient(room, message, sender, client);
+        sendMessageToClient(room, message, sender, client);
     }
     delete model;
 }
@@ -336,6 +312,7 @@ void serverManager::sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &
     QByteArray packet;
     for(auto msg: messageList){
         packet.append(msg->getByteArray());
+        packet.append("&&");
     }
 
     for(auto client : clients){
