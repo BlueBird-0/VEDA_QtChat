@@ -297,7 +297,7 @@ void ServerManager::sendMessageToRoom(const QString& roomName, const QString& me
 void ServerManager::handleFileUpload(QTcpSocket* sender, const Message& fileInfo)
 {
     QString fileName = fileInfo.fileName;
-    qint64 fileSize = QString(fileInfo.fileSize).toLongLong();
+    qint64 fileSize = fileInfo.fileSize;
     QString mimeType = fileInfo.mimeType;
     QString roomName = fileInfo.roomName;
     QString base64Data = fileInfo.message;

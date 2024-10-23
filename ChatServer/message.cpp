@@ -20,20 +20,21 @@ Message::Message(QByteArray data) {
         strncpy(roomName, parts[1].toUtf8().data(), sizeof(roomName) - 1);
         roomName[sizeof(roomName) - 1] = '\0';  // null-terminate
 
-        QString msgTypeStr = parts[2].toUtf8().data();
-        messageType = (MessageType) (msgTypeStr.toInt());
+        messageType = (MessageType)parts[2].toUtf8().toInt();
 
-        strncpy(message, parts[3].toUtf8().data(), sizeof(message) - 1);
-        message[sizeof(message) - 1] = '\0';  // null-terminate
-
-        strncpy(fileName, parts[4].toUtf8().data(), sizeof(fileName) - 1);
+        strncpy(fileName, parts[3].toUtf8().data(), sizeof(fileName) - 1);
         fileName[sizeof(fileName) - 1] = '\0';  // null-terminate
 
-        strncpy(fileSize, parts[5].toUtf8().data(), sizeof(fileSize) - 1);
-        fileSize[sizeof(fileSize) - 1] = '\0';  // null-terminate
+        fileSize = parts[4].toUtf8().toInt();
 
-        strncpy(mimeType, parts[6].toUtf8().data(), sizeof(mimeType) - 1);
+        strncpy(mimeType, parts[5].toUtf8().data(), sizeof(mimeType) - 1);
         mimeType[sizeof(mimeType) - 1] = '\0';  // null-terminate
+
+        messageLength = parts[6].toUtf8().toInt();
+
+        strncpy(message, parts[7].toUtf8().data(), sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';  // null-terminate
+
     }
 }
 
@@ -52,8 +53,11 @@ void Message::SetMessage(QString str) {
 void Message::SetFileName(QString str){
     memcpy(this->fileName, str.toStdString().c_str(), sizeof(this->fileName));
 }
-void Message::SetFileSize(QString str) {
-    memcpy(this->fileSize, str.toStdString().c_str(), sizeof(this->fileSize));
+void Message::SetFileSize(int fileSize){
+    this->fileSize = fileSize;
+}
+void Message::SetMessageLength(int msgLength) {
+    this->messageLength = msgLength;
 }
 void Message::SetMimeType(QString str) {
     memcpy(this->mimeType, str.toStdString().c_str(), sizeof(this->mimeType));
@@ -66,14 +70,16 @@ QByteArray Message::getByteArray() {
     data.append("\\");
     data.append(roomName);
     data.append("\\");
-    data.append(QString::number(messageType));
-    data.append("\\");
-    data.append(message);
+    data.append(QString::number(messageType).toStdString());
     data.append("\\");
     data.append(fileName);
     data.append("\\");
-    data.append(fileSize);
+    data.append(QString::number(fileSize).toStdString());
     data.append("\\");
     data.append(mimeType);
+    data.append("\\");
+    data.append(QString::number(messageLength).toStdString());
+    data.append("\\");
+    data.append(message);
     return data;
 }

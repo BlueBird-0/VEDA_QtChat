@@ -177,7 +177,7 @@ void TcpClient::on_sendFileButton_clicked()
     Message msg;
     msg.SetMessageType(MessageType::upload_file);
     msg.SetFileName(fileInfo.fileName());
-    msg.SetFileSize(QString::number(fileInfo.size()));
+    msg.SetFileSize((int)fileInfo.size());
     msg.SetMimeType(mimeType);
     msg.SetRoomName(currentRoom);
     msg.SetMessage(QString(fileData.toBase64()));

@@ -23,10 +23,12 @@ public:
     char senderId[100];
     char roomName[100];
     MessageType messageType;  //LOGIN, FILE, RTP_Connect 등등
-    char message[BUFSIZ];
     char fileName[100];
-    char fileSize[100];
+    int fileSize;
     char mimeType[100];
+    int messageLength;
+    char message[BUFSIZ];
+
     Message();
     Message(QByteArray data);
 
@@ -35,7 +37,8 @@ public:
     void SetMessageType(MessageType str);
     void SetMessage(QString str);
     void SetFileName(QString str);
-    void SetFileSize(QString fileSize);
+    void SetFileSize(int fileSize);
+    void SetMessageLength(int msgLength);
     void SetMimeType(QString str);
 
     QByteArray getByteArray();

@@ -26,7 +26,6 @@ private slots:
     void on_actionShow_message_Table_triggered(bool checked);
 
 private:
-    ServerManager manager;
     Ui::MainWindow *ui;
 };
 #endif // MAINWINDOW_H
