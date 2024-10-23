@@ -11,6 +11,7 @@
 #include <QSqlTableModel>
 #include <QTableView>
 #include <message.h>
+#include <QMutex>
 
 using namespace std;
 
@@ -121,6 +122,7 @@ void ServerManager::clientDisconnect()
     }
 }
 
+QMutex tcpMutex;
 void ServerManager::processMessage()
 {
 //    else if (action == "init_file_upload") {
@@ -134,16 +136,26 @@ void ServerManager::processMessage()
 //        QString fileId = jsonObj["fileId"].toString();
 //        handleFileDownloadRequest(clientSocket, fileId);
 //    }
-
+    tcpMutex.lock();
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
-        if (!clientSocket)
-            return;
+    if (!clientSocket)
+        return;
 
-        QByteArray data = clientSocket->readAll();
-        QString clientId = clients[clientSocket];
+    QByteArray data = clientSocket->readAll();
+    qDebug() <<"readAll Size: " << data.length();
+    int size = 0;
+    while(1){
+        //QByteArray data = clientSocket->read(sizeof(Message));
+        if ( data.length() < size)
+            break;
 
         Message recvMsg(data);
-        qDebug() <<"["<< recvMsg.senderId<<" : "<< recvMsg.roomName << "]"<<recvMsg.messageType<<"-"<<recvMsg.message;
+        size += sizeof(Message);
+
+        qDebug() <<"---" << recvMsg.messageLength;
+        QString clientId = clients[clientSocket];
+
+        //qDebug() <<"["<< recvMsg.senderId<<" : "<< recvMsg.roomName << "]"<<recvMsg.messageType<<"-"<<recvMsg.message;
 
         if( recvMsg.messageType == MessageType::Login){
             QString username(recvMsg.senderId);
@@ -161,16 +173,16 @@ void ServerManager::processMessage()
             dbManager->insertMessage(roomName, clients[clientSocket], message);
 
             sendMessageToRoom(roomName, message, clientSocket);
-        }else if (recvMsg.messageType == MessageType::upload_file) {
+        } else if (recvMsg.messageType == MessageType::upload_file) {
             handleFileUpload(clientSocket, recvMsg);
-            qDebug() << "testPacket";
         } else if (recvMsg.messageType == MessageType::request_file) {
             QString fileId = recvMsg.message;
             handleFileDownloadRequest(clientSocket, fileId);
         }
-
-        // Log the received message
-        //qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
+    }
+    tcpMutex.unlock();
+    // Log the received message
+    //qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
 }
 
 bool ServerManager::authenticateUser(const QString& username, const QString& password)
@@ -306,37 +318,37 @@ void ServerManager::handleFileUpload(QTcpSocket* sender, const Message& fileInfo
     QString fileId = generateUniqueFileId();
     QString filePath = QString("file_storage/%1").arg(fileId);
 
-    qDebug() << fileName << fileSize << mimeType << roomName << fileId << filePath;
+    qDebug() << QString::number(fileInfo.messageLength) << fileSize;
 
-    QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly)) {
-        fileStorage[fileId] = filePath;
-        file.write(fileData);
-        file.close();
+    // QFile file(filePath);
+    // if (file.open(QIODevice::WriteOnly)) {
+    //     fileStorage[fileId] = filePath;
+    //     file.write(fileData);
+    //     file.close();
 
-        qDebug() << "file written successfully on " << filePath;
+    //     qDebug() << "file written successfully on " << filePath;
 
-        QJsonObject response;
-        response["action"] = "file_shared";
-        response["sender"] = clients[sender];
-        response["fileId"] = fileId;
-        response["fileName"] = fileName;
+    //     QJsonObject response;
+    //     response["action"] = "file_shared";
+    //     response["sender"] = clients[sender];
+    //     response["fileId"] = fileId;
+    //     response["fileName"] = fileName;
 
-        for (QTcpSocket* client : rooms[roomName]) {
-            if (client != sender)
-                client->write(QJsonDocument(response).toJson());
-        }
+    //     for (QTcpSocket* client : rooms[roomName]) {
+    //         if (client != sender)
+    //             client->write(QJsonDocument(response).toJson());
+    //     }
 
-        ui->logTextEdit->appendPlainText(QString("File upload initiated: %1 (Size: %2 bytes, Type: %3)")
-                                             .arg(fileName)
-                                             .arg(fileSize)
-                                             .arg(mimeType));
-    } else {
-        QJsonObject response;
-        response["action"] = "error";
-        response["message"] = "Failed to prepare for file upload";
-        sender->write(QJsonDocument(response).toJson());
-    }
+    //     ui->logTextEdit->appendPlainText(QString("File upload initiated: %1 (Size: %2 bytes, Type: %3)")
+    //                                          .arg(fileName)
+    //                                          .arg(fileSize)
+    //                                          .arg(mimeType));
+    // } else {
+    //     QJsonObject response;
+    //     response["action"] = "error";
+    //     response["message"] = "Failed to prepare for file upload";
+    //     sender->write(QJsonDocument(response).toJson());
+    // }
 }
 
 void ServerManager::sendFileToRoom(const QString& roomName, const QString& fileId, const QString& fileName, QTcpSocket* sender)

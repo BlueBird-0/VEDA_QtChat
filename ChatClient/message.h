@@ -20,12 +20,12 @@ typedef enum {
 class Message
 {
 public:
-    char senderId[100];
-    char roomName[100];
+    char senderId[20];
+    char roomName[40];
     MessageType messageType;  //LOGIN, FILE, RTP_Connect 등등
-    char fileName[100];
+    char fileName[60];
     int fileSize;
-    char mimeType[100];
+    char mimeType[4];
     int messageLength;
     char message[BUFSIZ];
 

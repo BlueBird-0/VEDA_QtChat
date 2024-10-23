@@ -122,7 +122,7 @@ void TcpClient::on_createRoomButton_clicked()
         msg.SetSenderId(username);
         msg.SetMessageType(MessageType::create_Room);
         msg.SetMessage(roomName);
-        sendMessage(msg);
+        emit sendMessage(msg);
     }
 }
 
@@ -174,15 +174,26 @@ void TcpClient::on_sendFileButton_clicked()
     // Read file content
     QByteArray fileData = file.readAll();
 
-    Message msg;
-    msg.SetMessageType(MessageType::upload_file);
-    msg.SetFileName(fileInfo.fileName());
-    msg.SetFileSize((int)fileInfo.size());
-    msg.SetMimeType(mimeType);
-    msg.SetRoomName(currentRoom);
-    msg.SetMessage(QString(fileData.toBase64()));
-    sendMessage(msg);   //TODO 대용량 파일 전송 확인해보기
 
+    qDebug() << "File Size = " <<fileInfo.size();
+    int sendLength = 0;
+    while(sendLength < fileInfo.size()){
+        QByteArray chunk = fileData.mid(sendLength, BUFSIZ);            // BUFSIZ 크기만큼 자름
+
+
+        Message msg;
+        msg.SetMessageType(MessageType::upload_file);
+        msg.SetFileName(fileInfo.fileName());
+        msg.SetFileSize((int)fileInfo.size());
+        msg.SetMimeType(mimeType);
+        msg.SetRoomName(currentRoom);
+
+        msg.SetMessage(chunk);
+        msg.SetMessageLength(chunk.length());
+        qDebug() << "chunk Size = " <<chunk.length();
+        sendLength += chunk.length();
+        emit sendMessage(msg);   //TODO 대용량 파일 전송 확인해보기
+    }
     file.close();
 
     // // Send file content
