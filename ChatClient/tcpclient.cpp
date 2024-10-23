@@ -164,22 +164,32 @@ void TcpClient::on_sendFileButton_clicked()
     QString mimeType = db.mimeTypeForFile(fileInfo).name();
 
     // First, send file info to server
-    QJsonObject jsonObj;
-    jsonObj["action"] = "init_file_upload";
-    jsonObj["filename"] = fileInfo.fileName();
-    jsonObj["filesize"] = fileInfo.size();
-    jsonObj["mimetype"] = mimeType;
-    jsonObj["room"] = currentRoom;
+//    QJsonObject jsonObj;
+//    jsonObj["action"] = "init_file_upload";
+//    jsonObj["filename"] = fileInfo.fileName();
+//    jsonObj["filesize"] = fileInfo.size();
+//    jsonObj["mimetype"] = mimeType;
+//    jsonObj["room"] = currentRoom;
 
     // Read file content
     QByteArray fileData = file.readAll();
+
+    Message msg;
+    msg.SetMessageType(MessageType::upload_file);
+    msg.SetFileName(fileInfo.fileName());
+    msg.SetFileSize(QString::number(fileInfo.size()));
+    msg.SetMimeType(mimeType);
+    msg.SetRoomName(currentRoom);
+    msg.SetMessage(QString(fileData.toBase64()));
+    sendMessage(msg);   //TODO 대용량 파일 전송 확인해보기
+
     file.close();
 
     // // Send file content
     // QJsonObject fileObj;
     // fileObj["action"] = "upload_file";
     // fileObj["room"] = currentRoom;
-    jsonObj["data"] = QString(fileData.toBase64());
+//  jsonObj["data"] = QString(fileData.toBase64());
     // sendJson(fileObj);
     //sendJson(jsonObj);    //TODO 확인
 
@@ -259,6 +269,8 @@ void TcpClient::onReadyRead()
             appendMessage("System", QString("Left room: %1").arg(currentRoom), false);
             currentRoom.clear();
             updateUIState();
+        } else if (msg.messageType == MessageType::file_data) {
+            processFileDownload(msg);
         }
     }
 }
@@ -294,12 +306,16 @@ void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
 
 void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
 {
-    QString urlString = fileId.toString();
-    QJsonObject jsonObj;
-    jsonObj["action"] = "request_file";
-    jsonObj["fileId"] = urlString;
+    //QString urlString = fileId.toString();
+    //QJsonObject jsonObj;
+    //jsonObj["action"] = "request_file";
+    //jsonObj["fileId"] = urlString;
     //sendJson(jsonObj);    //TODO : 확인
 
+    Message msg;
+    msg.SetMessage(fileId.toString());
+    msg.SetMessageType(MessageType::request_file);
+    sendMessage(msg);
 
     // downloadProgress = new QProgressDialog("Downloading file...", "Cancel", 0, 100, this);
     // downloadProgress->setWindowModality(Qt::WindowModal);
@@ -313,9 +329,10 @@ void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
     // });
 }
 
-void TcpClient::processFileDownload(const QJsonObject &jsonObj)
+void TcpClient::processFileDownload(const Message &msg)
 {
-    QString fileName = jsonObj["fileId"].toString();
+    //QString fileName = jsonObj["fileId"].toString();
+    QString fileName = msg.mimeType;
     QString saveFilePath = QFileDialog::getSaveFileName(this, "Save File As", fileLinks.value(fileName, fileName));
 
     if (saveFilePath.isEmpty()) return;
@@ -328,7 +345,7 @@ void TcpClient::processFileDownload(const QJsonObject &jsonObj)
         return;
     }
 
-    QByteArray fileData = QByteArray::fromBase64(jsonObj["data"].toString().toLatin1());
+    QByteArray fileData = QByteArray::fromBase64(QString(msg.message).toLatin1());
     currentDownloadFile->write(fileData);
     onFileDownloadFinished();
 }

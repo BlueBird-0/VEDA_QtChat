@@ -161,10 +161,16 @@ void ServerManager::processMessage()
             dbManager->insertMessage(roomName, clients[clientSocket], message);
 
             sendMessageToRoom(roomName, message, clientSocket);
+        }else if (recvMsg.messageType == MessageType::upload_file) {
+            handleFileUpload(clientSocket, recvMsg);
+            qDebug() << "testPacket";
+        } else if (recvMsg.messageType == MessageType::request_file) {
+            QString fileId = recvMsg.message;
+            handleFileDownloadRequest(clientSocket, fileId);
         }
 
         // Log the received message
-        qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
+        //qDebug() << "Received from" << clientId << ":" << QString::fromUtf8(data);
 }
 
 bool ServerManager::authenticateUser(const QString& username, const QString& password)
@@ -288,13 +294,13 @@ void ServerManager::sendMessageToRoom(const QString& roomName, const QString& me
     }
 }
 
-void ServerManager::handleFileUpload(QTcpSocket* sender, const QJsonObject& fileInfo)
+void ServerManager::handleFileUpload(QTcpSocket* sender, const Message& fileInfo)
 {
-    QString fileName = fileInfo["filename"].toString();
-    qint64 fileSize = fileInfo["filesize"].toString().toLongLong();
-    QString mimeType = fileInfo["mimetype"].toString();
-    QString roomName = fileInfo["room"].toString();
-    QString base64Data = fileInfo["data"].toString();
+    QString fileName = fileInfo.fileName;
+    qint64 fileSize = QString(fileInfo.fileSize).toLongLong();
+    QString mimeType = fileInfo.mimeType;
+    QString roomName = fileInfo.roomName;
+    QString base64Data = fileInfo.message;
     QByteArray fileData = QByteArray::fromBase64(base64Data.toUtf8());
 
     QString fileId = generateUniqueFileId();
@@ -363,29 +369,44 @@ void ServerManager::handleFileDownloadRequest(QTcpSocket* client, const QString&
             QByteArray fileData = file.readAll();
             file.close();
 
-            QJsonObject response;
-            response["action"] = "file_data";
-            response["fileId"] = fileId;
-            response["filename"] = QFileInfo(filePath).fileName();
-            response["data"] = QString(fileData.toBase64());
+//            QJsonObject response;
+//            response["action"] = "file_data";
+//            response["fileId"] = fileId;
+//            response["filename"] = QFileInfo(filePath).fileName();
+//            response["data"] = QString(fileData.toBase64());
+//            client->write(QJsonDocument(response).toJson());
 
-            client->write(QJsonDocument(response).toJson());
+            Message msg;
+            msg.SetMessageType(MessageType::file_data);
+            msg.SetMimeType(fileId);
+            msg.SetFileName(QFileInfo(filePath).fileName());
+            msg.SetMessage(QString(fileData.toBase64()));
+
+            sendMessage(*client, msg);
 
             qDebug() << QString("File downloaded by %1: %2")
                             .arg(clients[client], QFileInfo(filePath).fileName());
             ui->logTextEdit->appendPlainText(QString("File downloaded by %1: %2")
                                                  .arg(clients[client], QFileInfo(filePath).fileName()));
         } else {
-            QJsonObject response;
-            response["action"] = "error";
-            response["message"] = "Failed to read file data";
-            client->write(QJsonDocument(response).toJson());
+//            QJsonObject response;
+//            response["action"] = "error";
+//            response["message"] = "Failed to read file data";
+//            client->write(QJsonDocument(response).toJson());
+            Message msg;
+            msg.SetMessageType(MessageType::Error);
+            msg.SetMessage(QString("Failed to read file data"));
+            sendMessage(*client, msg);
         }
     } else {
-        QJsonObject response;
-        response["action"] = "error";
-        response["message"] = "File not found";
-        client->write(QJsonDocument(response).toJson());
+//        QJsonObject response;
+//        response["action"] = "error";
+//        response["message"] = "File not found";
+//        client->write(QJsonDocument(response).toJson());
+        Message msg;
+        msg.SetMessageType(MessageType::Error);
+        msg.SetMessage(QString("File not found"));
+        sendMessage(*client, msg);
     }
 }
 

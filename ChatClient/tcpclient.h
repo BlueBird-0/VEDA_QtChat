@@ -44,7 +44,7 @@ signals:
 private:
     void updateUIState();
     void sendJson(const QJsonObject &jsonObj);
-    void processFileDownload(const QJsonObject &jsonObj);
+    void processFileDownload(const Message &msg);
     void appendMessage(const QString &sender, const QString &message, bool isFile = false);
 
     Ui::TcpClient *ui;

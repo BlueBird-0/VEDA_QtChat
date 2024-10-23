@@ -13,7 +13,7 @@ Message::Message(QByteArray data) {
     QStringList parts = dataString.split("\\"); // '\\'를 기준으로 문자열을 분리
 
     // 분리된 값들을 각각 senderId, messageType, message에 할당
-    if (parts.size() >= 4) {
+    if (parts.size() >= 6) {
         strncpy(senderId, parts[0].toUtf8().data(), sizeof(senderId) - 1);
         senderId[sizeof(senderId) - 1] = '\0';  // null-terminate
 
@@ -25,6 +25,15 @@ Message::Message(QByteArray data) {
 
         strncpy(message, parts[3].toUtf8().data(), sizeof(message) - 1);
         message[sizeof(message) - 1] = '\0';  // null-terminate
+
+        strncpy(fileName, parts[4].toUtf8().data(), sizeof(fileName) - 1);
+        fileName[sizeof(fileName) - 1] = '\0';  // null-terminate
+
+        strncpy(fileSize, parts[5].toUtf8().data(), sizeof(fileSize) - 1);
+        fileSize[sizeof(fileSize) - 1] = '\0';  // null-terminate
+
+        strncpy(mimeType, parts[6].toUtf8().data(), sizeof(mimeType) - 1);
+        mimeType[sizeof(mimeType) - 1] = '\0';  // null-terminate
     }
 }
 
@@ -40,6 +49,15 @@ void Message::SetMessageType(MessageType messageType) {
 void Message::SetMessage(QString str) {
     memcpy(this->message, str.toStdString().c_str(), sizeof(this->message));
 }
+void Message::SetFileName(QString str){
+    memcpy(this->fileName, str.toStdString().c_str(), sizeof(this->fileName));
+}
+void Message::SetFileSize(QString str) {
+    memcpy(this->fileSize, str.toStdString().c_str(), sizeof(this->fileSize));
+}
+void Message::SetMimeType(QString str) {
+    memcpy(this->mimeType, str.toStdString().c_str(), sizeof(this->mimeType));
+}
 
 
 QByteArray Message::getByteArray() {
@@ -52,5 +70,10 @@ QByteArray Message::getByteArray() {
     data.append("\\");
     data.append(message);
     data.append("\\");
+    data.append(fileName);
+    data.append("\\");
+    data.append(fileSize);
+    data.append("\\");
+    data.append(mimeType);
     return data;
 }
