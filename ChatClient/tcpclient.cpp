@@ -6,6 +6,8 @@
 #include <QJsonObject>
 #include <QDateTime>
 #include <QMimeDatabase>
+#include <QTextBrowser>
+using namespace std;
 
 TcpClient::TcpClient(QWidget *parent) :
     QWidget(parent),
@@ -21,6 +23,8 @@ TcpClient::TcpClient(QWidget *parent) :
     connect(socket, &QTcpSocket::connected, this, &TcpClient::onConnected);
     connect(socket, &QTcpSocket::disconnected, this, &TcpClient::onDisconnected);
     connect(ui->chatDisplay, &QTextBrowser::anchorClicked, this, &TcpClient::handleFileDownloadRequest);
+
+    connect(this, &TcpClient::sendMessage, this, &TcpClient::on_sendMessage);
 
     ui->serverIP->setText("127.0.0.1");
     ui->serverPort->setText("5432");
@@ -75,26 +79,38 @@ void TcpClient::on_loginButton_clicked()
     username = ui->usernameEdit->text();
     QString password = ui->passwordEdit->text();
 
-    QJsonObject jsonObj;
-    jsonObj["action"] = "login";
-    jsonObj["username"] = username;
-    jsonObj["password"] = password;
-    sendJson(jsonObj);
+    Message msg;
+    msg.SetSenderId(username);
+    msg.SetMessageType(MessageType::Login);
+    msg.SetMessage(password);
+    ui->messageEdit->clear();
+
+    emit sendMessage(msg);  //서버에 msg 전송하는 이벤트 발생
+
 }
 
 void TcpClient::on_sendButton_clicked()
 {
     if(isLoggedIn && !currentRoom.isEmpty()) {
         QString message = ui->messageEdit->text();
-        if (!message.isEmpty()) {
-            QJsonObject jsonObj;
-            jsonObj["action"] = "send_message";
-            jsonObj["room"] = currentRoom;
-            jsonObj["message"] = message;
-            sendJson(jsonObj);
-            appendMessage(username, message); // Show own message immediately
-            ui->messageEdit->clear();
-        }
+        Message msg;
+        msg.SetSenderId(username);
+        msg.SetRoomName(currentRoom);
+        msg.SetMessageType(MessageType::send_Message);
+        msg.SetMessage(message);
+        ui->messageEdit->clear();
+
+        emit sendMessage(msg);  //서버에 msg 전송하는 이벤트 발생
+    }
+}
+
+void TcpClient::on_sendMessage(Message msg)
+{
+    if(socket->state() == QAbstractSocket::ConnectedState) {
+        // server에 Message 객체 전송
+        socket->write(msg.getByteArray());
+    } else {
+        QMessageBox::warning(this, "Warning", "Not connected to server");
     }
 }
 
@@ -102,10 +118,11 @@ void TcpClient::on_createRoomButton_clicked()
 {
     QString roomName = ui->roomNameEdit->text();
     if(!roomName.isEmpty()) {
-        QJsonObject jsonObj;
-        jsonObj["action"] = "create_room";
-        jsonObj["room"] = roomName;
-        sendJson(jsonObj);
+        Message msg;
+        msg.SetSenderId(username);
+        msg.SetMessageType(MessageType::create_Room);
+        msg.SetMessage(roomName);
+        sendMessage(msg);
     }
 }
 
@@ -113,22 +130,21 @@ void TcpClient::on_joinRoomButton_clicked()
 {
     QString roomName = ui->roomNameEdit->text();
     if(!roomName.isEmpty()) {
-        QJsonObject jsonObj;
-        jsonObj["action"] = "join_room";
-        jsonObj["room"] = roomName;
-        sendJson(jsonObj);
+        Message msg;
+        msg.SetSenderId(username);
+        msg.SetMessageType(MessageType::join_Room);
+        msg.SetMessage(roomName);
+        sendMessage(msg);
     }
 }
 
 void TcpClient::on_leaveRoomButton_clicked()
 {
     if(!currentRoom.isEmpty()) {
-        QJsonObject jsonObj;
-        jsonObj["action"] = "leave_room";
-        jsonObj["room"] = currentRoom;
-        sendJson(jsonObj);
-        currentRoom.clear();
-        updateUIState();
+        Message msg;
+        msg.SetMessageType(MessageType::left_Room);
+        msg.SetRoomName(currentRoom);
+        sendMessage(msg);
     }
 }
 
@@ -165,7 +181,7 @@ void TcpClient::on_sendFileButton_clicked()
     // fileObj["room"] = currentRoom;
     jsonObj["data"] = QString(fileData.toBase64());
     // sendJson(fileObj);
-    sendJson(jsonObj);
+    //sendJson(jsonObj);    //TODO 확인
 
     // // Show own file message immediately
     appendMessage(username, fileInfo.fileName(), true);
@@ -173,46 +189,77 @@ void TcpClient::on_sendFileButton_clicked()
 
 void TcpClient::onReadyRead()
 {
-    QByteArray data = socket->readAll();
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(data);
-    QJsonObject jsonObj = jsonDoc.object();
+    QByteArray byteArray = socket->readAll();
+        vector<Message> messageList;
+        recvMessage(byteArray, messageList);
 
-    QString action = jsonObj["action"].toString();
+//    QString action = jsonObj["action"].toString();
 
-    qDebug() << action << "\n";
+//    qDebug() << action << "\n";
 
-    if (action == "login_response") {
-        bool success = jsonObj["success"].toBool();
-        if (success) {
-            isLoggedIn = true;
-            ui->chatDisplay->append("Logged in successfully");
-        } else {
-            ui->chatDisplay->append("Login failed: " + jsonObj["message"].toString());
+//    if (action == "login_response") {
+//        bool success = jsonObj["success"].toBool();
+//        if (success) {
+//            isLoggedIn = true;
+//            ui->chatDisplay->append("Logged in successfully");
+//        } else {
+//            ui->chatDisplay->append("Login failed: " + jsonObj["message"].toString());
+//        }
+//        updateUIState();
+//    } else if (action == "room_created" || action == "joined_room") {
+//        currentRoom = jsonObj["room"].toString();
+//        ui->chatDisplay->append(QString("Entered room: %1").arg(currentRoom));
+//        updateUIState();
+//    } else if (action == "left_room") {
+//        ui->chatDisplay->append(QString("Left room: %1").arg(currentRoom));
+//        currentRoom.clear();
+//        updateUIState();
+//    } else if (action == "new_message") {
+//        QString sender = jsonObj["sender"].toString();
+//        QString message = jsonObj["message"].toString();
+//        appendMessage(sender, message);
+//    } else if (action == "file_shared") {
+//        QString sender = jsonObj["sender"].toString();
+//        QString fileId = jsonObj["fileId"].toString();
+//        QString fileName = jsonObj["fileName"].toString();
+//        fileLinks[fileId] = fileName;
+//        appendMessage(sender, fileId, true);
+//    } else if (action == "file_data") {
+//        processFileDownload(jsonObj);
+//    } else if (action == "error") {
+//        QString errorMessage = jsonObj["message"].toString();
+//        QMessageBox::warning(this, "Error", errorMessage);
+//    }
+   for(auto msg : messageList){
+        if(msg.messageType == MessageType::Login)
+        {
+            if(msg.message == QString("Success"))
+            {
+                isLoggedIn = true;
+                appendMessage("System", "Logged in successfully", false);
+                qDebug() << "login Success";
+            } else {
+                // 로그인 실패
+                appendMessage("System", "Login failed: " + QString(msg.message), false);
+                qDebug() << "login Failed";
+            }
+            updateUIState();
+        } else if (msg.messageType == MessageType::create_Room || msg.messageType == MessageType::join_Room) {
+            currentRoom = QString(msg.message);
+            appendMessage("System", QString("Entered room: %1").arg(currentRoom), false);
+            updateUIState();
+        } else if (msg.messageType == MessageType::new_Message) {
+            QString sender = msg.senderId;
+            QString message = msg.message;
+            appendMessage("Ssytem", QString("%1: %2").arg(sender, message),  false);
+        } else if (msg.messageType == MessageType::Error) {
+            QString errorMessage = msg.message;
+            QMessageBox::warning(this, "Error", errorMessage);
+        } else if (msg.messageType == MessageType::left_Room) {
+            appendMessage("System", QString("Left room: %1").arg(currentRoom), false);
+            currentRoom.clear();
+            updateUIState();
         }
-        updateUIState();
-    } else if (action == "room_created" || action == "joined_room") {
-        currentRoom = jsonObj["room"].toString();
-        ui->chatDisplay->append(QString("Entered room: %1").arg(currentRoom));
-        updateUIState();
-    } else if (action == "left_room") {
-        ui->chatDisplay->append(QString("Left room: %1").arg(currentRoom));
-        currentRoom.clear();
-        updateUIState();
-    } else if (action == "new_message") {
-        QString sender = jsonObj["sender"].toString();
-        QString message = jsonObj["message"].toString();
-        appendMessage(sender, message);
-    } else if (action == "file_shared") {
-        QString sender = jsonObj["sender"].toString();
-        QString fileId = jsonObj["fileId"].toString();
-        QString fileName = jsonObj["fileName"].toString();
-        fileLinks[fileId] = fileName;
-        appendMessage(sender, fileId, true);
-    } else if (action == "file_data") {
-        processFileDownload(jsonObj);
-    } else if (action == "error") {
-        QString errorMessage = jsonObj["message"].toString();
-        QMessageBox::warning(this, "Error", errorMessage);
     }
 }
 
@@ -230,10 +277,19 @@ void TcpClient::onDisconnected()
     updateUIState();
 }
 
-void TcpClient::sendJson(const QJsonObject &jsonObj)
+void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
 {
-    QJsonDocument jsonDoc(jsonObj);
-    socket->write(jsonDoc.toJson());
+    // QByteArray를 QString로 변환하고, 구분자를 '\\'로 지정하여 분리
+    QString dataString = QString::fromUtf8(byteArray);
+    QStringList splits = dataString.split("&&"); // '\\'를 기준으로 문자열을 분리
+    qDebug()<< "recvMsgList[" << splits.size() << "] :" << dataString;
+
+    for(int i=0; i<splits.size()-1; i++)
+    {
+        QByteArray msgBytes = splits[i].toUtf8();
+
+        recvMsgList.push_back(msgBytes);
+    }
 }
 
 void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
@@ -242,7 +298,8 @@ void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
     QJsonObject jsonObj;
     jsonObj["action"] = "request_file";
     jsonObj["fileId"] = urlString;
-    sendJson(jsonObj);
+    //sendJson(jsonObj);    //TODO : 확인
+
 
     // downloadProgress = new QProgressDialog("Downloading file...", "Cancel", 0, 100, this);
     // downloadProgress->setWindowModality(Qt::WindowModal);
