@@ -1,6 +1,8 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 #include <QByteArray>
+#define SPLITKEY "@#!"
+#define ENDKEY '$'
 class QString;
 
 typedef enum {
@@ -11,12 +13,14 @@ typedef enum {
     left_Room,
     send_Message,
     new_Message,
+    uploadInit_file,
     upload_file,
     request_file,
     file_data,
     Error,
 }MessageType;
 
+#define MSGBUF 1024
 class Message
 {
 public:
@@ -27,7 +31,7 @@ public:
     int fileSize;
     char mimeType[4];
     int messageLength;
-    char message[BUFSIZ];
+    char message[MSGBUF];
 
     Message();
     Message(QByteArray data);

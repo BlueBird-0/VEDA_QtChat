@@ -2,18 +2,18 @@
 #include <QByteArray>
 #include <QString>
 #include <QStringList>
+#include <QDebug>
 
 Message::Message() {
     memset(this, 0, sizeof(Message));
 }
 
 Message::Message(QByteArray data) {
-    // QByteArray를 QString로 변환하고, 구분자를 '\\'로 지정하여 분리
     QString dataString = QString::fromUtf8(data);
-    QStringList parts = dataString.split("\\"); // '\\'를 기준으로 문자열을 분리
+    QStringList parts = dataString.split(SPLITKEY);
 
     // 분리된 값들을 각각 senderId, messageType, message에 할당
-    if (parts.size() >= 6) {
+    if (parts.size() >= 8) {
         strncpy(senderId, parts[0].toUtf8().data(), sizeof(senderId) - 1);
         senderId[sizeof(senderId) - 1] = '\0';  // null-terminate
 
@@ -67,19 +67,20 @@ void Message::SetMimeType(QString str) {
 QByteArray Message::getByteArray() {
     QByteArray data;
     data.append(senderId);
-    data.append("\\");
+    data.append(SPLITKEY);
     data.append(roomName);
-    data.append("\\");
-    data.append(QString::number(messageType).toStdString());
-    data.append("\\");
+    data.append(SPLITKEY);
+    data.append(QString::number(messageType));
+    data.append(SPLITKEY);
     data.append(fileName);
-    data.append("\\");
-    data.append(QString::number(fileSize).toStdString());
-    data.append("\\");
+    data.append(SPLITKEY);
+    data.append(QString::number(fileSize));
+    data.append(SPLITKEY);
     data.append(mimeType);
-    data.append("\\");
-    data.append(QString::number(messageLength).toStdString());
-    data.append("\\");
+    data.append(SPLITKEY);
+    data.append(QString::number(messageLength));
+    data.append(SPLITKEY);
     data.append(message);
+    data.append(ENDKEY);
     return data;
 }

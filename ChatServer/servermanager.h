@@ -66,7 +66,7 @@ private:
     void sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &messageList);
 
     void sendMessageToRoom(const QString& roomName, const QString& message, QTcpSocket* sender);
-    void handleFileUpload(QTcpSocket* sender, const Message& fileInfo);
+    void handleFileUpload(QTcpSocket* sender, const Message& fileInfo, const QByteArray *fileByte);
     void sendFileToRoom(const QString& roomName, const QString& fileId, const QString& fileName, QTcpSocket* sender);
     void handleFileDownloadRequest(QTcpSocket* client, const QString& fileId);
     QString generateUniqueFileId();

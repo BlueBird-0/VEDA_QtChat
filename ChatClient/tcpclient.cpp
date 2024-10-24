@@ -7,6 +7,8 @@
 #include <QDateTime>
 #include <QMimeDatabase>
 #include <QTextBrowser>
+#include <QTimer>
+#include <QMutex>
 using namespace std;
 
 TcpClient::TcpClient(QWidget *parent) :
@@ -104,11 +106,20 @@ void TcpClient::on_sendButton_clicked()
     }
 }
 
+QMutex tcpMutex;
 void TcpClient::on_sendMessage(Message msg)
 {
     if(socket->state() == QAbstractSocket::ConnectedState) {
         // server에 Message 객체 전송
-        socket->write(msg.getByteArray());
+        QByteArray msgBytes = msg.getByteArray();
+        tcpMutex.lock();
+        //qDebug() << "on_sendMessage :"<<msgBytes.size();
+        socket->write(msgBytes);
+        tcpMutex.unlock();
+//        QEventLoop loop;
+//        QTimer::singleShot(10, &loop, SLOT(quit())); // 2-second delay
+  //      loop.exec();  // Process events until quit() is called
+
     } else {
         QMessageBox::warning(this, "Warning", "Not connected to server");
     }
@@ -163,46 +174,39 @@ void TcpClient::on_sendFileButton_clicked()
     QMimeDatabase db;
     QString mimeType = db.mimeTypeForFile(fileInfo).name();
 
-    // First, send file info to server
-//    QJsonObject jsonObj;
-//    jsonObj["action"] = "init_file_upload";
-//    jsonObj["filename"] = fileInfo.fileName();
-//    jsonObj["filesize"] = fileInfo.size();
-//    jsonObj["mimetype"] = mimeType;
-//    jsonObj["room"] = currentRoom;
-
     // Read file content
     QByteArray fileData = file.readAll();
 
 
     qDebug() << "File Size = " <<fileInfo.size();
-    int sendLength = 0;
-    while(sendLength < fileInfo.size()){
-        QByteArray chunk = fileData.mid(sendLength, BUFSIZ);            // BUFSIZ 크기만큼 자름
+    int fileSize = fileInfo.size();
+    int sendSize = 0;
 
+    bool uploadInit = false;
+    while(sendSize != fileSize){
+        int remainSize = fileSize-sendSize;
+        QByteArray chunk = fileData.mid(sendSize, min(MSGBUF-1, remainSize));// BUFSIZ 크기만큼 자름
+        sendSize += min(MSGBUF-1, fileSize-sendSize);
 
         Message msg;
-        msg.SetMessageType(MessageType::upload_file);
+        if(!uploadInit){
+            msg.SetMessageType(MessageType::uploadInit_file);
+            uploadInit = true;
+        }else{
+            msg.SetMessageType(MessageType::upload_file);
+        }
         msg.SetFileName(fileInfo.fileName());
         msg.SetFileSize((int)fileInfo.size());
         msg.SetMimeType(mimeType);
         msg.SetRoomName(currentRoom);
 
-        msg.SetMessage(chunk);
         msg.SetMessageLength(chunk.length());
+        msg.SetMessage(chunk);
+
         qDebug() << "chunk Size = " <<chunk.length();
-        sendLength += chunk.length();
         emit sendMessage(msg);   //TODO 대용량 파일 전송 확인해보기
     }
     file.close();
-
-    // // Send file content
-    // QJsonObject fileObj;
-    // fileObj["action"] = "upload_file";
-    // fileObj["room"] = currentRoom;
-//  jsonObj["data"] = QString(fileData.toBase64());
-    // sendJson(fileObj);
-    //sendJson(jsonObj);    //TODO 확인
 
     // // Show own file message immediately
     appendMessage(username, fileInfo.fileName(), true);
@@ -210,35 +214,6 @@ void TcpClient::on_sendFileButton_clicked()
 
 void TcpClient::onReadyRead()
 {
-    QByteArray byteArray = socket->readAll();
-        vector<Message> messageList;
-        recvMessage(byteArray, messageList);
-
-//    QString action = jsonObj["action"].toString();
-
-//    qDebug() << action << "\n";
-
-//    if (action == "login_response") {
-//        bool success = jsonObj["success"].toBool();
-//        if (success) {
-//            isLoggedIn = true;
-//            ui->chatDisplay->append("Logged in successfully");
-//        } else {
-//            ui->chatDisplay->append("Login failed: " + jsonObj["message"].toString());
-//        }
-//        updateUIState();
-//    } else if (action == "room_created" || action == "joined_room") {
-//        currentRoom = jsonObj["room"].toString();
-//        ui->chatDisplay->append(QString("Entered room: %1").arg(currentRoom));
-//        updateUIState();
-//    } else if (action == "left_room") {
-//        ui->chatDisplay->append(QString("Left room: %1").arg(currentRoom));
-//        currentRoom.clear();
-//        updateUIState();
-//    } else if (action == "new_message") {
-//        QString sender = jsonObj["sender"].toString();
-//        QString message = jsonObj["message"].toString();
-//        appendMessage(sender, message);
 //    } else if (action == "file_shared") {
 //        QString sender = jsonObj["sender"].toString();
 //        QString fileId = jsonObj["fileId"].toString();
@@ -251,7 +226,18 @@ void TcpClient::onReadyRead()
 //        QString errorMessage = jsonObj["message"].toString();
 //        QMessageBox::warning(this, "Error", errorMessage);
 //    }
-   for(auto msg : messageList){
+    QByteArray byteArray = socket->readAll();
+    qDebug() <<"message:" << byteArray;
+
+    QList<QByteArray> byteList =byteArray.split(ENDKEY);
+    while(!byteList.empty()){
+        QByteArray *msgBytes = &byteList.front();
+        byteList.pop_front();
+        if(msgBytes->size() == 0){
+            break;
+        }
+        Message msg(*msgBytes);
+
         if(msg.messageType == MessageType::Login)
         {
             if(msg.message == QString("Success"))
@@ -304,14 +290,15 @@ void TcpClient::recvMessage(QByteArray &byteArray, vector<Message>& recvMsgList)
 {
     // QByteArray를 QString로 변환하고, 구분자를 '\\'로 지정하여 분리
     QString dataString = QString::fromUtf8(byteArray);
-    QStringList splits = dataString.split("&&"); // '\\'를 기준으로 문자열을 분리
-    qDebug()<< "recvMsgList[" << splits.size() << "] :" << dataString;
+    //QStringList splits = dataString.split("&");   //TODO 검토후 지울 것.
+    //qDebug()<< "recvMsgList[" << splits.size() << "] :" << dataString;
 
-    for(int i=0; i<splits.size()-1; i++)
+
+    //for(int i=0; i<splits.size()-1; i++)
     {
-        QByteArray msgBytes = splits[i].toUtf8();
+       // QByteArray msgBytes = splits[i].toUtf8();
 
-        recvMsgList.push_back(msgBytes);
+        //recvMsgList.push_back(msgBytes);
     }
 }
 
@@ -324,7 +311,8 @@ void TcpClient::handleFileDownloadRequest(const QUrl& fileId)
     //sendJson(jsonObj);    //TODO : 확인
 
     Message msg;
-    msg.SetMessage(fileId.toString());
+    QString urlString = fileId.toString();
+    msg.SetMessage(urlString);
     msg.SetMessageType(MessageType::request_file);
     sendMessage(msg);
 

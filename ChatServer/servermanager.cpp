@@ -125,34 +125,38 @@ void ServerManager::clientDisconnect()
 QMutex tcpMutex;
 void ServerManager::processMessage()
 {
-//    else if (action == "init_file_upload") {
-//        handleFileUpload(clientSocket, jsonObj);
-//    } else if (action == "upload_file") {
-//        QString roomName = jsonObj["room"].toString();
-//        QString fileId = jsonObj["fileId"].toString();
-//        QString fileName = jsonObj["filename"].toString();
-//        sendFileToRoom(roomName, fileId, fileName, clientSocket);
-//    } else if (action == "request_file") {
-//        QString fileId = jsonObj["fileId"].toString();
-//        handleFileDownloadRequest(clientSocket, fileId);
-//    }
     tcpMutex.lock();
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
     if (!clientSocket)
         return;
 
+    //QByteArray data = clientSocket->readAll();
+    qDebug() <<"==== size of Message: " << sizeof(Message);
+
     QByteArray data = clientSocket->readAll();
-    qDebug() <<"readAll Size: " << data.length();
+    qDebug() <<"recvByteSize:" << data.size();
+    int msgCount=0;
+    int totalSize =0;
     int size = 0;
-    while(1){
-        //QByteArray data = clientSocket->read(sizeof(Message));
-        if ( data.length() < size)
+
+    QList<QByteArray> list = data.split(ENDKEY);
+    //qDebug() <<"message:" << data;
+    while(!list.empty()){
+        QByteArray *msgBytes = &list.front();
+        //qDebug() <<"splitmsg:" << *msgBytes;
+        if(msgBytes->size() == 0){
+            list.pop_front();   //Message한개 삭제
             break;
+        }
 
-        Message recvMsg(data);
-        size += sizeof(Message);
+        Message recvMsg(*msgBytes);
+        list.pop_front();   //Message한개 삭제
 
-        qDebug() <<"---" << recvMsg.messageLength;
+        msgCount++;
+        totalSize = recvMsg.fileSize;
+        size += recvMsg.messageLength;
+        //qDebug() <<"messageLength:" << recvMsg.messageLength;
+
         QString clientId = clients[clientSocket];
 
         //qDebug() <<"["<< recvMsg.senderId<<" : "<< recvMsg.roomName << "]"<<recvMsg.messageType<<"-"<<recvMsg.message;
@@ -173,8 +177,20 @@ void ServerManager::processMessage()
             dbManager->insertMessage(roomName, clients[clientSocket], message);
 
             sendMessageToRoom(roomName, message, clientSocket);
-        } else if (recvMsg.messageType == MessageType::upload_file) {
-            handleFileUpload(clientSocket, recvMsg);
+        } else if (recvMsg.messageType == MessageType::upload_file || recvMsg.messageType == MessageType::uploadInit_file) {
+            static QByteArray fileByte;
+            static int fileSize;
+
+            if(recvMsg.messageType == MessageType::uploadInit_file) {
+                fileByte.clear();
+                fileSize = 0;
+            }
+
+            fileSize += recvMsg.messageLength;
+            fileByte.append(recvMsg.message);
+            if(fileSize == recvMsg.fileSize){
+                handleFileUpload(clientSocket, recvMsg, &fileByte);
+            }
         } else if (recvMsg.messageType == MessageType::request_file) {
             QString fileId = recvMsg.message;
             handleFileDownloadRequest(clientSocket, fileId);
@@ -306,49 +322,50 @@ void ServerManager::sendMessageToRoom(const QString& roomName, const QString& me
     }
 }
 
-void ServerManager::handleFileUpload(QTcpSocket* sender, const Message& fileInfo)
+void ServerManager::handleFileUpload(QTcpSocket* sender, const Message& fileInfo, const QByteArray *fileByte)
 {
     QString fileName = fileInfo.fileName;
     qint64 fileSize = fileInfo.fileSize;
     QString mimeType = fileInfo.mimeType;
     QString roomName = fileInfo.roomName;
-    QString base64Data = fileInfo.message;
-    QByteArray fileData = QByteArray::fromBase64(base64Data.toUtf8());
+    //QString base64Data = fileInfo.message;
+    //QByteArray fileData = QByteArray::fromBase64(base64Data.toUtf8());
 
     QString fileId = generateUniqueFileId();
     QString filePath = QString("file_storage/%1").arg(fileId);
 
-    qDebug() << QString::number(fileInfo.messageLength) << fileSize;
+    //qDebug() << QString::number(fileInfo.messageLength) << fileSize;
 
-    // QFile file(filePath);
-    // if (file.open(QIODevice::WriteOnly)) {
-    //     fileStorage[fileId] = filePath;
-    //     file.write(fileData);
-    //     file.close();
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly)) {
+        fileStorage[fileId] = filePath;
+        //file.write(fileData);
+        file.write(*fileByte);
+        file.close();
 
-    //     qDebug() << "file written successfully on " << filePath;
+        qDebug() << "file written successfully on " << filePath;
 
-    //     QJsonObject response;
-    //     response["action"] = "file_shared";
-    //     response["sender"] = clients[sender];
-    //     response["fileId"] = fileId;
-    //     response["fileName"] = fileName;
+        QJsonObject response;
+        response["action"] = "file_shared";
+        response["sender"] = clients[sender];
+        response["fileId"] = fileId;
+        response["fileName"] = fileName;
 
-    //     for (QTcpSocket* client : rooms[roomName]) {
-    //         if (client != sender)
-    //             client->write(QJsonDocument(response).toJson());
-    //     }
+        for (QTcpSocket* client : rooms[roomName]) {
+            if (client != sender)
+                client->write(QJsonDocument(response).toJson());
+        }
 
-    //     ui->logTextEdit->appendPlainText(QString("File upload initiated: %1 (Size: %2 bytes, Type: %3)")
-    //                                          .arg(fileName)
-    //                                          .arg(fileSize)
-    //                                          .arg(mimeType));
-    // } else {
-    //     QJsonObject response;
-    //     response["action"] = "error";
-    //     response["message"] = "Failed to prepare for file upload";
-    //     sender->write(QJsonDocument(response).toJson());
-    // }
+        ui->logTextEdit->appendPlainText(QString("File upload initiated: %1 (Size: %2 bytes, Type: %3)")
+                                             .arg(fileName)
+                                             .arg(fileSize)
+                                             .arg(mimeType));
+    } else {
+        QJsonObject response;
+        response["action"] = "error";
+        response["message"] = "Failed to prepare for file upload";
+        sender->write(QJsonDocument(response).toJson());
+    }
 }
 
 void ServerManager::sendFileToRoom(const QString& roomName, const QString& fileId, const QString& fileName, QTcpSocket* sender)
@@ -381,19 +398,11 @@ void ServerManager::handleFileDownloadRequest(QTcpSocket* client, const QString&
             QByteArray fileData = file.readAll();
             file.close();
 
-//            QJsonObject response;
-//            response["action"] = "file_data";
-//            response["fileId"] = fileId;
-//            response["filename"] = QFileInfo(filePath).fileName();
-//            response["data"] = QString(fileData.toBase64());
-//            client->write(QJsonDocument(response).toJson());
-
             Message msg;
             msg.SetMessageType(MessageType::file_data);
             msg.SetMimeType(fileId);
             msg.SetFileName(QFileInfo(filePath).fileName());
             msg.SetMessage(QString(fileData.toBase64()));
-
             sendMessage(*client, msg);
 
             qDebug() << QString("File downloaded by %1: %2")
@@ -401,10 +410,6 @@ void ServerManager::handleFileDownloadRequest(QTcpSocket* client, const QString&
             ui->logTextEdit->appendPlainText(QString("File downloaded by %1: %2")
                                                  .arg(clients[client], QFileInfo(filePath).fileName()));
         } else {
-//            QJsonObject response;
-//            response["action"] = "error";
-//            response["message"] = "Failed to read file data";
-//            client->write(QJsonDocument(response).toJson());
             Message msg;
             msg.SetMessageType(MessageType::Error);
             msg.SetMessage(QString("Failed to read file data"));
@@ -474,7 +479,6 @@ void ServerManager::sendMessage(vector<QTcpSocket*> &clients, vector<Message*> &
     QByteArray packet;
     for(auto msg: messageList){
         packet.append(msg->getByteArray());
-        packet.append("&&");
     }
 
     for(auto client : clients){
